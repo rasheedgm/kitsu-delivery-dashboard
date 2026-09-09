@@ -1,0 +1,15 @@
+id = "delivery_dashboard"
+name = "Delivery Dashboard"
+version = "0.1.0"
+description = "Live delivery command center: overdue deliveries, weekly quota, department pipeline, handoffs and an overdue recovery queue, built from the studio's Kitsu data."
+maintainer = "gm.abdul <gm.abdul@gmail.com>"
+website = "https://github.com/gm-abdul/kitsu-delivery-dashboard"
+license = "AGPL-3.0-only"
+
+# Studio-wide sidebar entry (no production context). The dashboard aggregates
+# across every open production and offers an in-UI production filter.
+frontend_studio_enabled = true
+frontend_project_enabled = false
+
+# Lucide icon name shown in the Kitsu sidebar.
+icon = "layout-dashboard"

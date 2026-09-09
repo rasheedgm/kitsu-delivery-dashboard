@@ -1,0 +1,14 @@
+# Keep the committed build byte-exact (no CRLF translation) so the server
+# serves what Vite produced.
+frontend/dist/** -text
+
+# Normalise source to LF.
+*.js   text eol=lf
+*.mjs  text eol=lf
+*.vue  text eol=lf
+*.css  text eol=lf
+*.json text eol=lf
+*.toml text eol=lf
+*.md   text eol=lf
+*.py   text eol=lf
+*.ps1  text eol=crlf

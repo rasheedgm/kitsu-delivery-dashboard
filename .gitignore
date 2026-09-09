@@ -1,0 +1,17 @@
+# Node build tooling
+frontend/node_modules/
+
+# Local packaging output (not needed — git install uses the committed source)
+dist-package/
+*.zip
+
+# Python
+__pycache__/
+*.pyc
+
+# Editor / OS
+.DS_Store
+*.local
+
+# NOTE: frontend/dist/ IS committed on purpose. The Kitsu server has no Node,
+# so `zou install-plugin --path <git-url>` needs the pre-built frontend in the repo.
