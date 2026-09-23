@@ -213,8 +213,11 @@ tr.clickable{cursor:pointer}
 .schedDayHead.today{background:var(--blue2)}
 .schedWeekday{display:block;font-size:8px;font-weight:800;color:var(--muted);letter-spacing:.05em}
 .schedDayNum{display:block;font-size:14px;font-weight:850;margin-top:1px}
-.schedRowName{position:sticky;left:0;z-index:1;background:var(--card);border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:10px;font-size:9px;font-weight:750;display:flex;align-items:center}
+.schedRowName{position:sticky;left:0;z-index:1;background:var(--card);border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:10px;font-size:9px;font-weight:750;display:flex;align-items:center;justify-content:space-between;gap:6px}
 .schedRowName.unassigned{color:var(--muted);font-style:italic}
+.schedRowNameText{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.schedUnpin{flex:0 0 auto;border:0;background:none;color:var(--muted);cursor:pointer;font-size:12px;line-height:1;padding:2px}
+.schedUnpin:hover{color:var(--red)}
 .schedCell{border-left:1px solid var(--line);border-bottom:1px solid var(--line);padding:6px;display:flex;flex-direction:column;gap:6px;min-height:56px}
 .schedCell.today{background:var(--blue2)}
 .schedCell.over{background:var(--purple2);outline:2px dashed var(--purple);outline-offset:-2px}
@@ -228,6 +231,22 @@ tr.clickable{cursor:pointer}
 .schedThumbFallback{position:absolute;inset:0;display:grid;place-items:center;font-size:14px;font-weight:800;color:var(--muted);background:var(--line)}
 .schedStatusBadge{position:absolute;top:4px;right:4px;font-size:6px;padding:2px 5px;box-shadow:0 1px 2px rgba(0,0,0,.25)}
 .schedCaption{position:absolute;left:0;right:0;bottom:0;padding:10px 6px 4px;font:800 8px ui-monospace,SFMono-Regular,Menlo,monospace;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:linear-gradient(transparent,rgba(10,16,20,.82))}
+.schedCard.ghost{cursor:pointer;opacity:.4;filter:grayscale(.6)}
+.schedCard.ghost .schedCaption{font-weight:700}
+
+/* "+" add-to-cell / add-person pickers */
+.schedPicker{position:relative;display:inline-block}
+.schedAddBtn{width:100%;border:1px dashed var(--line);background:none;color:var(--muted);border-radius:6px;padding:4px;font-size:10px;font-weight:800;cursor:pointer;line-height:1}
+.schedHead .schedAddBtn{width:auto;padding:7px 11px;border-radius:7px;font-size:8px;text-transform:uppercase;letter-spacing:.04em}
+.schedAddBtn:hover{border-color:var(--blue);color:var(--blue)}
+.schedPopover{position:absolute;top:calc(100% + 4px);z-index:10;width:220px;background:var(--card);border:1px solid var(--line);border-radius:9px;box-shadow:0 8px 24px rgba(20,35,45,.18);padding:8px;left:0}
+.schedPopover.align-right{left:auto;right:0}
+.schedPopoverInput{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:6px 8px;font-size:9px;outline:none;margin-bottom:6px}
+.schedPopoverInput:focus{border-color:var(--blue)}
+.schedPopoverList{max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:2px}
+.schedPopoverItem{text-align:left;border:0;background:none;padding:6px 7px;border-radius:6px;font-size:9px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.schedPopoverItem:hover{background:var(--bg)}
+.schedPopoverEmpty{font-size:9px;color:var(--muted);padding:6px 7px}
 
 @media(max-width:1050px){
  .grid2,.grid3{grid-template-columns:1fr}

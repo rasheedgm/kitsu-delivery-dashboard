@@ -116,7 +116,26 @@ assignee to a different row asks for confirmation first, since the drop
 target becomes its *only* assignee (the other one is silently dropped
 otherwise) — a real, easy-to-hit surprise, not just a hypothetical edge case.
 Every move is optimistic (applies to the board immediately) and reverts
-automatically if the write fails.
+automatically if the write fails. The same confirm-and-revert path runs
+whether the move came from a drag or the "+" picker below.
+
+**Ghost trail.** If a task has a `start_date` before its `due_date`, a
+dimmed, non-interactive copy of the card fills every day in between (on the
+same person's row) — including days in a week where the due date itself
+isn't visible, so a long-running task still shows wherever its assignee is
+meant to be working on it. The real, draggable card stays on the due date.
+
+**Two ways to add work to a cell that isn't already on the board:**
+- **"+" on a cell** opens a search over every task in the current production
+  scope — pick one and it's scheduled onto that person/day (`due_date` +
+  `assignees` set, exactly like a drag would do — the multi-assignee confirm
+  guard applies here too). It doesn't create anything in Kitsu, just moves an
+  existing task.
+- **"+ Add person"** in the header pins an empty row for someone with no
+  task touching this week, so there's somewhere to put one via the "+" above.
+  The pin is a per-session convenience, not saved state: once that person has
+  a real task, their row shows up on its own and the pin (and its "×" to
+  remove an still-empty pinned row) becomes moot.
 
 ## Interactive features
 
@@ -272,7 +291,7 @@ frontend/
       filters.js            Task Queue filter <-> route query <-> chips (unit-tested)
       schedule.js            week math + grid grouping + move-patch computation (unit-tested)
       kitsuLinks.js          deep links into Kitsu's own shot pages + preview thumbnail URLs
-    components/             DonutCard, BarChartCard, SeverityCard, SavedViewsBar, ScheduleCard, …
+    components/             DonutCard, BarChartCard, SeverityCard, SavedViewsBar, ScheduleCard, SchedulePicker, …
     views/                  OverviewView, ProductionView, TaskQueueView, ScheduleView, SettingsView
 ```
 

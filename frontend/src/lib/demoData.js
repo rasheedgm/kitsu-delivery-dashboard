@@ -48,7 +48,8 @@ function buildShots(prefix, count, seed) {
     const num = String(i * 10).padStart(4, '0')
     const tasks = TYPES.filter((_, idx) => idx === 3 || rand() > 0.55).map((type) => {
       const st = STATUSES[Math.floor(rand() * STATUSES.length)]
-      const due = iso(Math.floor(rand() * 40) - 25)
+      const dueOffset = Math.floor(rand() * 40) - 25
+      const due = iso(dueOffset)
       const first = Math.floor(rand() * PERSONS.length)
       // Occasionally co-assign a second person — exercises the schedule
       // board's "moving this reassigns it away from a co-assignee" guard.
@@ -57,10 +58,14 @@ function buildShots(prefix, count, seed) {
         const second = (first + 1 + Math.floor(rand() * (PERSONS.length - 1))) % PERSONS.length
         assignees.push(PERSONS[second].id)
       }
+      // A start_date a few days before due, for the schedule board's ghost
+      // trail. Occasionally a longer-running task (up to 12 days).
+      const span = rand() > 0.75 ? 3 + Math.floor(rand() * 10) : 1 + Math.floor(rand() * 3)
       return {
         id: `${prefix}_${num}_${type.id}`,
         task_type_id: type.id,
         task_status_id: st.id,
+        start_date: iso(dueOffset - span),
         due_date: due,
         assignees
       }
@@ -104,6 +109,7 @@ export function demoDataset() {
           statusColor: status.color,
           klass: classifyStatus(status),
           dueDate: parseDate(task.due_date),
+          startDate: parseDate(task.start_date),
           assignees: task.assignees,
           assigneeNames: task.assignees.map((id) => personById[id].first_name)
         })

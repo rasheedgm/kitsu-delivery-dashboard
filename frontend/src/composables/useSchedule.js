@@ -2,7 +2,7 @@ import { computed, ref } from 'vue'
 import { useDashboardData } from './useDashboardData.js'
 import { updateTask } from '../api/kitsu.js'
 import { isoKey } from '../lib/format.js'
-import { buildScheduleGrid, computeMovePatch, dropAffectsOtherAssignees, shiftWeek, weekStart } from '../lib/schedule.js'
+import { UNASSIGNED_ID, buildScheduleGrid, computeMovePatch, dropAffectsOtherAssignees, shiftWeek, weekStart } from '../lib/schedule.js'
 
 // Kitsu's own permission rules (zou/app/services/user_service.py
 // check_supervisor_task_access) — mirrored here so the board can disable
@@ -18,11 +18,17 @@ function isDemoMode() {
   return new URLSearchParams(window.location.search).get('demo') === '1'
 }
 
+// Rows pinned onto the board with zero tasks, so there's somewhere to drop a
+// new one — a per-session convenience, not a saved preference: once a pinned
+// person actually has a task, they show up on their own and the pin is moot.
+// Module-level so it survives navigating away from /schedule and back.
+const pinnedPersons = ref([])
+
 export function useSchedule() {
   const { state, filteredRows, applyTaskPatch } = useDashboardData()
 
   const start = ref(weekStart(new Date()))
-  const grid = computed(() => buildScheduleGrid(filteredRows.value, start.value))
+  const grid = computed(() => buildScheduleGrid(filteredRows.value, start.value, pinnedPersons.value))
 
   const canEditDueDate = computed(() => CAN_EDIT_DUE_DATE.has(state.role))
   const canEditAssignees = computed(() => CAN_EDIT_ASSIGNEES.has(state.role))
@@ -35,6 +41,15 @@ export function useSchedule() {
   }
   function goToday() {
     start.value = weekStart(new Date())
+  }
+
+  function pinPerson(person) {
+    if (!pinnedPersons.value.some((p) => p.id === person.id)) {
+      pinnedPersons.value = [...pinnedPersons.value, person]
+    }
+  }
+  function unpinPerson(id) {
+    pinnedPersons.value = pinnedPersons.value.filter((p) => p.id !== id)
   }
 
   // Returns { ok, error, confirmNeeded }. `confirmNeeded` means the caller
@@ -72,14 +87,31 @@ export function useSchedule() {
     }
   }
 
+  // "Add to this cell" from the picker instead of a drag: same underlying
+  // move, but there's no drag source row, so decide fromPersonId contextually
+  // — if the task is already on the target person's row, only the date
+  // changes (co-assignees are left alone); otherwise it's a reassign, same
+  // as dragging it there from wherever it currently sits.
+  function scheduleTask(task, toPersonId, toDateKey, opts) {
+    const alreadyOnTarget =
+      toPersonId === UNASSIGNED_ID ? task.assignees.length === 0 : task.assignees.includes(toPersonId)
+    const fromPersonId = alreadyOnTarget ? toPersonId : task.assignees[0] || UNASSIGNED_ID
+    return moveTask(task, fromPersonId, toPersonId, toDateKey, opts)
+  }
+
   return {
     weekStart: start,
     grid,
+    filteredRows,
+    pinnedPersons,
     canEditDueDate,
     canEditAssignees,
     goPrevWeek,
     goNextWeek,
     goToday,
-    moveTask
+    pinPerson,
+    unpinPerson,
+    moveTask,
+    scheduleTask
   }
 }

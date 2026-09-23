@@ -49,7 +49,7 @@ watch(selectedProjectId, (id) => {
   }
 })
 
-function personName(person) {
+export function personName(person) {
   const full = [person.first_name, person.last_name].filter(Boolean).join(' ').trim()
   return full || person.full_name || person.email || 'Unknown'
 }
@@ -158,6 +158,7 @@ async function load() {
             statusColor: status ? status.color : '#999',
             klass: classifyStatus(status),
             dueDate: parseDate(task.due_date || task.end_date),
+            startDate: parseDate(task.start_date),
             previewFileId: task.last_preview_file_id || null,
             assignees,
             assigneeNames: assignees

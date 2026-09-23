@@ -34,15 +34,25 @@ function dayLabel(date) {
   }
 }
 
-// Build the board: one row per person who has a task due this week (plus
-// "Unassigned" if any task has no assignee), each with one cell per day
-// holding the tasks due that day for that person. A multi-assignee task
-// appears once per assignee — dragging it off one person's row doesn't
-// remove it from a co-assignee's row unless the drag targets that field
-// (see computeMovePatch).
-export function buildScheduleGrid(rows, start) {
+// Build the board: one row per person with a task touching this week (plus
+// "Unassigned" if any such task has no assignee, and any `pinnedPersons`
+// pinned on with zero tasks so there's somewhere to drop a new one), each
+// with one cell per day holding entries for that person that day.
+//
+// A cell entry is `{ task, ghost }`: the real, draggable card sits on the
+// task's due-date day (`ghost: false`); if it also has a `startDate` before
+// that, a dimmed, non-interactive `ghost: true` copy fills every day from
+// start_date up to (not including) the due date — including days in weeks
+// where the due date itself isn't visible, so a long-running task still
+// shows wherever its assignee is meant to be working on it that week.
+//
+// A multi-assignee task appears once per assignee — dragging it off one
+// person's row doesn't remove it from a co-assignee's row unless the drag
+// targets that field (see computeMovePatch).
+export function buildScheduleGrid(rows, start, pinnedPersons = []) {
   const days = weekDays(start).map(dayLabel)
-  const dayKeys = new Set(days.map((d) => d.key))
+  const dayKeys = days.map((d) => d.key)
+  const dayKeySet = new Set(dayKeys)
   const byPerson = new Map()
 
   function ensureRow(id, name) {
@@ -50,23 +60,36 @@ export function buildScheduleGrid(rows, start) {
       byPerson.set(id, {
         personId: id,
         name,
-        cells: Object.fromEntries(days.map((d) => [d.key, []]))
+        cells: Object.fromEntries(dayKeys.map((k) => [k, []]))
       })
     }
     return byPerson.get(id)
   }
 
+  for (const person of pinnedPersons) ensureRow(person.id, person.name)
+
   for (const row of rows) {
     if (!row.dueDate) continue
-    const key = isoKey(row.dueDate)
-    if (!dayKeys.has(key)) continue
+    const dueKey = isoKey(row.dueDate)
+
+    const touched = []
+    if (dayKeySet.has(dueKey)) touched.push({ key: dueKey, ghost: false })
+    if (row.startDate && row.startDate < row.dueDate) {
+      for (const d of days) {
+        if (d.key !== dueKey && d.date >= row.startDate && d.date < row.dueDate) {
+          touched.push({ key: d.key, ghost: true })
+        }
+      }
+    }
+    if (!touched.length) continue
 
     const assignees = row.assignees && row.assignees.length
       ? row.assignees.map((id, i) => ({ id, name: row.assigneeNames[i] || 'Unknown' }))
       : [{ id: UNASSIGNED_ID, name: 'Unassigned' }]
 
     for (const a of assignees) {
-      ensureRow(a.id, a.name).cells[key].push(row)
+      const person = ensureRow(a.id, a.name)
+      for (const { key, ghost } of touched) person.cells[key].push({ task: row, ghost })
     }
   }
 
