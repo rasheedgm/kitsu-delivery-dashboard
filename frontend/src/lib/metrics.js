@@ -259,6 +259,56 @@ export function overdueQueue(rows, today = new Date()) {
   return queueRows(rows, { due: 'overdue' }, today)
 }
 
+// --- Shot-level rows ---------------------------------------------------
+// Kitsu has no separate "shot status" — it's a task's status. Which task
+// represents the shot is a studio call (see composables/useSettings.js):
+// either an explicit task type ("Client Delivery"), or — until a studio
+// configures that — the shot's chronologically last task, as a reasonable
+// default. Once built, a shot row has the same `dueDate`/`klass` shape as a
+// task row, so every existing row-based metric (kpis, weeklyQuota,
+// statusBreakdown, …) works unchanged on shot rows too.
+
+function pickRepresentativeTask(tasks, settings) {
+  if (!tasks.length) return null
+  if (settings.shotStatusTaskTypeId) {
+    return tasks.find((t) => t.taskTypeId === settings.shotStatusTaskTypeId) || null
+  }
+  const withDue = tasks.filter((t) => t.dueDate)
+  if (withDue.length) {
+    return withDue.reduce((latest, t) => (t.dueDate > latest.dueDate ? t : latest))
+  }
+  return tasks[tasks.length - 1]
+}
+
+function classifyShotStatus(task, settings) {
+  if (!task) return CLASS.NOT_STARTED
+  if (settings.deliveredStatusIds.includes(task.statusId)) return CLASS.DONE
+  if (settings.retakeStatusIds.includes(task.statusId)) return CLASS.RETAKE
+  // No explicit studio override for this status: fall back to the task's own
+  // flag-based classification (is_done / is_retake / is_default).
+  return task.klass
+}
+
+// `shots` is useDashboardData's per-shot list (each with an embedded `.tasks`
+// array) — one shot row comes out per shot, including shots with no tasks at
+// all yet (classified "not started", no due date).
+export function buildShotRows(shots, settings) {
+  return (shots || []).map((shot) => {
+    const rep = pickRepresentativeTask(shot.tasks || [], settings)
+    return {
+      shotId: shot.shotId,
+      projectId: shot.projectId,
+      projectName: shot.projectName,
+      shotName: shot.shotName,
+      taskTypeName: rep ? rep.taskTypeName : null,
+      statusName: rep ? rep.statusName : 'No task yet',
+      klass: classifyShotStatus(rep, settings),
+      dueDate: rep ? rep.dueDate : null,
+      assigneeNames: rep ? rep.assigneeNames : []
+    }
+  })
+}
+
 // Nearest future delivery target across the given projects (uses project
 // end_date). Returns { date, daysLeft, projectName } or null.
 export function deadline(projects, today = new Date()) {

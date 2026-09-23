@@ -102,5 +102,13 @@ export function demoDataset() {
       }
     }
   }
-  return { studioName: 'Demo Studio', projects, persons: PERSONS, rows, shotCount }
+  return {
+    studioName: 'Demo Studio',
+    projects,
+    persons: PERSONS,
+    taskTypes: TYPES,
+    taskStatuses: STATUSES,
+    rows,
+    shotCount
+  }
 }

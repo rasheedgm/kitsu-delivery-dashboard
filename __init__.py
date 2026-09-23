@@ -1,14 +1,18 @@
 """Delivery Dashboard plugin.
 
-This plugin is frontend-only: it ships a Vue single-page app that reads Kitsu's
-core REST API and computes every metric in the browser. It adds no API routes
-and no database tables.
+The Vue frontend reads Kitsu's core REST API and computes every dashboard
+metric in the browser. The one backend piece is a tiny studio-wide settings
+table (see models.py) — Kitsu's plugin system has no settings framework of
+its own, so anything that needs to be shared across everyone's dashboard
+(which task type represents a shot's status, which statuses mean
+"delivered"/"retake") lives here instead of in each viewer's browser.
 """
 
-# No backend routes. Kitsu still serves ``frontend/dist`` as static files at
-# ``/api/plugins/delivery_dashboard/frontend/`` because the manifest enables a
-# frontend section.
-routes = []
+from . import resources
+
+routes = [
+    ("/settings", resources.SettingsResource),
+]
 
 
 def pre_install(manifest):

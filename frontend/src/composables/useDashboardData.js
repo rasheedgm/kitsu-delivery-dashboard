@@ -1,10 +1,9 @@
 import { computed, reactive, ref, watch } from 'vue'
 import {
-  checkLogin,
   getOpenProductions,
   getPersons,
+  getSession,
   getShotsWithTasks,
-  getStudioName,
   getTaskStatuses,
   getTaskTypes
 } from '../api/kitsu.js'
@@ -15,11 +14,15 @@ const state = reactive({
   loading: false,
   loaded: false,
   loggedIn: true,
+  isAdmin: false,
   error: null,
   studioName: null,
   projects: [],
   persons: [],
+  taskTypes: [], // raw list, for the Settings screen's task-type picker
+  taskStatuses: [], // raw list, for the Settings screen's status checklists
   rows: [], // one per shot task, across all open productions
+  shots: [], // one per shot (incl. shots with zero tasks), each with .tasks
   shotCount: 0
 })
 
@@ -50,6 +53,26 @@ function personName(person) {
   return full || person.full_name || person.email || 'Unknown'
 }
 
+// Group flat task rows into one entry per shot — used for the demo dataset,
+// which (unlike the real fetch loop below) has no separate "zero-task shots"
+// to seed ahead of time.
+function groupRowsIntoShots(rows) {
+  const map = new Map()
+  for (const r of rows) {
+    if (!map.has(r.shotId)) {
+      map.set(r.shotId, {
+        shotId: r.shotId,
+        projectId: r.projectId,
+        projectName: r.projectName,
+        shotName: r.shotName,
+        tasks: []
+      })
+    }
+    map.get(r.shotId).tasks.push(r)
+  }
+  return [...map.values()]
+}
+
 async function load() {
   if (state.loading) return
   state.loading = true
@@ -57,22 +80,28 @@ async function load() {
   try {
     if (new URLSearchParams(window.location.search).get('demo') === '1') {
       const demo = demoDataset()
-      Object.assign(state, { ...demo, loggedIn: true, loaded: true })
+      Object.assign(state, {
+        ...demo,
+        shots: groupRowsIntoShots(demo.rows),
+        loggedIn: true,
+        isAdmin: true,
+        loaded: true
+      })
       return
     }
 
-    state.loggedIn = await checkLogin()
+    const session = await getSession()
+    state.loggedIn = session.loggedIn
+    state.isAdmin = session.isAdmin
+    state.studioName = session.studioName
     if (!state.loggedIn) return
 
-    const [projects, persons, taskTypes, taskStatuses, studioName] = await Promise.all([
+    const [projects, persons, taskTypes, taskStatuses] = await Promise.all([
       getOpenProductions(),
       getPersons(),
       getTaskTypes(),
-      getTaskStatuses(),
-      getStudioName().catch(() => null)
+      getTaskStatuses()
     ])
-
-    state.studioName = studioName
 
     const typeById = indexById(taskTypes)
     const statusById = indexById(taskStatuses)
@@ -80,8 +109,11 @@ async function load() {
 
     state.projects = projects || []
     state.persons = persons || []
+    state.taskTypes = taskTypes || []
+    state.taskStatuses = taskStatuses || []
 
     const rows = []
+    const shots = []
     let shotCount = 0
 
     const shotLists = await Promise.all(
@@ -92,20 +124,30 @@ async function load() {
       )
     )
 
-    for (const { project, shots } of shotLists) {
-      for (const shot of shots) {
+    for (const { project, shots: projectShots } of shotLists) {
+      for (const shot of projectShots) {
         if (shot.canceled) continue
         shotCount += 1
+        const shotName = [shot.sequence_name, shot.name].filter(Boolean).join(' / ') || shot.name
+        const shotEntry = {
+          shotId: shot.id,
+          projectId: project.id,
+          projectName: project.name,
+          shotName,
+          tasks: []
+        }
+        shots.push(shotEntry)
+
         for (const task of shot.tasks || []) {
           const status = statusById[task.task_status_id]
           const type = typeById[task.task_type_id]
           const assignees = task.assignees || []
-          rows.push({
+          const row = {
             taskId: task.id,
             projectId: project.id,
             projectName: project.name,
             shotId: shot.id,
-            shotName: [shot.sequence_name, shot.name].filter(Boolean).join(' / ') || shot.name,
+            shotName,
             taskTypeId: task.task_type_id,
             taskTypeName: type ? type.name : 'Unknown',
             statusId: task.task_status_id,
@@ -117,12 +159,15 @@ async function load() {
             assigneeNames: assignees
               .map((id) => (personById[id] ? personName(personById[id]) : null))
               .filter(Boolean)
-          })
+          }
+          rows.push(row)
+          shotEntry.tasks.push(row)
         }
       }
     }
 
     state.rows = rows
+    state.shots = shots
     state.shotCount = shotCount
     state.loaded = true
 
@@ -145,22 +190,26 @@ export function useDashboardData() {
       : state.rows.filter((r) => r.projectId === selectedProjectId.value)
   )
 
+  const filteredShots = computed(() =>
+    selectedProjectId.value === 'all'
+      ? state.shots
+      : state.shots.filter((s) => s.projectId === selectedProjectId.value)
+  )
+
   const filteredProjects = computed(() =>
     selectedProjectId.value === 'all'
       ? state.projects
       : state.projects.filter((p) => p.id === selectedProjectId.value)
   )
 
-  const filteredShotCount = computed(() => {
-    if (selectedProjectId.value === 'all') return state.shotCount
-    return new Set(filteredRows.value.map((r) => r.shotId)).size
-  })
+  const filteredShotCount = computed(() => filteredShots.value.length)
 
   return {
     state,
     load,
     selectedProjectId,
     filteredRows,
+    filteredShots,
     filteredProjects,
     filteredShotCount
   }

@@ -15,31 +15,74 @@ const {
   kpis,
   deadline,
   statusSegments,
-  quota,
-  quotaSegments,
   deliveryLoad,
   severity,
   handoffs,
   artistPressure,
-  rows
+  rows,
+  shotRows,
+  shotKpis,
+  shotStatusSegments,
+  shotQuota,
+  shotQuotaSegments,
+  shotStatusDeptName
 } = useMetrics()
 
 const { goToQueue } = useDrillThrough()
 
 const trackedTotal = computed(() => rows.value.length)
+const shotsTotal = computed(() => shotRows.value.length)
 
-function onQuotaSegment(segment) {
-  goToQueue(segment.key === 'done' ? { due: 'week', status: CLASS.DONE } : { due: 'week' })
+// Narrow a Shots Overview click to exactly the tasks that decide shot status,
+// when the studio has configured which task type that is.
+function goToShotsQueue(patch) {
+  goToQueue(shotStatusDeptName.value ? { ...patch, dept: shotStatusDeptName.value } : patch)
+}
+
+function onShotQuotaSegment(segment) {
+  goToShotsQueue(segment.key === 'done' ? { due: 'week', status: CLASS.DONE } : { due: 'week' })
 }
 </script>
 
 <template>
   <section>
-    <DeadlineBanner :deadline="deadline" :overdue="kpis.overdue" />
-    <KpiRow :k="kpis" @select="goToQueue" />
+    <DeadlineBanner :deadline="deadline" :overdue="shotKpis.overdue" />
 
+    <div class="sectionHead">
+      <b>Shots overview</b>
+      <span v-if="shotStatusDeptName">shot status = the shot's "{{ shotStatusDeptName }}" task · set in Settings</span>
+      <span v-else>shot status = each shot's last-scheduled task · set a specific task type in Settings</span>
+    </div>
+    <KpiRow :k="shotKpis" @select="goToShotsQueue" />
+
+    <div class="grid2">
+      <DonutCard
+        title="Shot status"
+        :hint="shotsTotal + ' shots'"
+        :center-value="shotsTotal"
+        center-label="shots"
+        :segments="shotStatusSegments"
+        clickable
+        note="One representative task per shot (see the Shots overview note above). Click a status to open those shots' tasks in the queue."
+        @select="(s) => goToShotsQueue({ status: s.key, due: 'all' })"
+      />
+      <DonutCard
+        title="Weekly quota (shots)"
+        hint="current ISO week"
+        :center-value="shotQuota.pct + '%'"
+        center-label="progress"
+        :segments="shotQuotaSegments"
+        clickable
+        :note="`${shotQuota.done} shots delivered, ${shotQuota.remaining} remaining of ${shotQuota.total} due this week.`"
+        @select="onShotQuotaSegment"
+      />
+    </div>
+
+    <div class="sectionHead">
+      <b>Task overview</b>
+      <span>every shot task, across all departments</span>
+    </div>
     <div class="card" style="margin-bottom:12px">
-      <div class="head"><div class="title">Project alerts</div><div class="hint">click any figure to open it in the queue</div></div>
       <div class="kpis" style="margin-bottom:0">
         <div class="kpi red clickable" @click="goToQueue({ due: 'overdue' })"><div class="kl">Overdue</div><div class="kv">{{ kpis.overdue }}</div></div>
         <div class="kpi amber clickable" @click="goToQueue({ due: 'today' })"><div class="kl">Due today</div><div class="kv">{{ kpis.dueToday }}</div></div>
@@ -61,16 +104,7 @@ function onQuotaSegment(segment) {
         note="Status is classified from Kitsu task-status flags (done / retake / todo), with a name fallback for studio-specific statuses. Click a status to open it in the queue."
         @select="(s) => goToQueue({ status: s.key, due: 'all' })"
       />
-      <DonutCard
-        title="Weekly quota"
-        hint="current ISO week"
-        :center-value="quota.pct + '%'"
-        center-label="progress"
-        :segments="quotaSegments"
-        clickable
-        :note="`Quota = tasks with a due date in this week. ${quota.done} delivered, ${quota.remaining} remaining of ${quota.total}. Click to open in the queue.`"
-        @select="onQuotaSegment"
-      />
+      <ArtistPressureCard :artists="artistPressure" @select="goToQueue" />
     </div>
 
     <div class="grid3">
@@ -78,9 +112,6 @@ function onQuotaSegment(segment) {
       <SeverityCard :buckets="severity" @select="goToQueue" />
     </div>
 
-    <div class="grid2">
-      <HandoffsCard :data="handoffs" />
-      <ArtistPressureCard :artists="artistPressure" @select="goToQueue" />
-    </div>
+    <div style="margin-bottom:12px"><HandoffsCard :data="handoffs" /></div>
   </section>
 </template>

@@ -1,8 +1,10 @@
 # Installing the Delivery Dashboard plugin on Kitsu (Portainer / Docker)
 
-This plugin is **frontend-only** and ships with its frontend already built
-(`frontend/dist/` is committed), so the Kitsu server needs **no Node / build
-tools** — just `zou install-plugin` and a restart.
+This plugin ships with its frontend already built (`frontend/dist/` is
+committed), so the Kitsu server needs **no Node / build tools** — just
+`zou install-plugin` and a restart. It also carries one small database table
+(studio-wide settings); `zou install-plugin` applies that migration
+automatically on every install, including upgrades — no separate step.
 
 Repo: `https://github.com/rasheedgm/kitsu-delivery-dashboard.git`
 
@@ -160,7 +162,7 @@ then restart the container (step 4).
 cd CWD && ZOU uninstall-plugin --id delivery_dashboard
 ```
 
-then restart. (This plugin creates no database tables, so nothing else to clean up.)
+then restart. `uninstall-plugin` runs the migration's `downgrade()` automatically, which drops `plugin_delivery_dashboard_settings` — nothing manual to clean up.
 
 ---
 

@@ -9,6 +9,7 @@ import {
   statusMatrix,
   overdueQueue,
   queueRows,
+  buildShotRows,
   deadline
 } from './metrics.js'
 
@@ -190,6 +191,72 @@ describe('queueRows', () => {
   it('sorts a non-overdue view by due date ascending', () => {
     const q = queueRows(rows, { due: 'all' }, TODAY)
     expect(q.map((r) => r.shot)).toEqual(['A_0010', 'A_0030', 'A_0020', 'A_0040'])
+  })
+})
+
+describe('buildShotRows', () => {
+  const settings = (over = {}) => ({
+    shotStatusTaskTypeId: null,
+    deliveredStatusIds: [],
+    retakeStatusIds: [],
+    ...over
+  })
+
+  const shots = [
+    {
+      shotId: 's1',
+      projectId: 'p1',
+      projectName: 'Show A',
+      shotName: 'A_0010',
+      tasks: [
+        row({
+          taskTypeId: 'tt_roto',
+          taskTypeName: 'Rotoscopy',
+          statusId: 'st_done',
+          klass: CLASS.DONE,
+          dueDate: d(2026, 8, 1)
+        }),
+        row({
+          taskTypeId: 'tt_comp',
+          taskTypeName: 'Compositing',
+          statusId: 'st_wip',
+          klass: CLASS.WIP,
+          dueDate: d(2026, 9, 15)
+        })
+      ]
+    },
+    { shotId: 's2', projectId: 'p1', projectName: 'Show A', shotName: 'A_0020', tasks: [] }
+  ]
+
+  it('falls back to the latest-due task when no task type is configured', () => {
+    const rows = buildShotRows(shots, settings())
+    expect(rows[0].taskTypeName).toBe('Compositing')
+    expect(rows[0].klass).toBe(CLASS.WIP)
+  })
+
+  it('a shot with no tasks yet is "not started" with no due date', () => {
+    const rows = buildShotRows(shots, settings())
+    expect(rows[1].klass).toBe(CLASS.NOT_STARTED)
+    expect(rows[1].dueDate).toBeNull()
+  })
+
+  it('uses the configured task type when set', () => {
+    const rows = buildShotRows(shots, settings({ shotStatusTaskTypeId: 'tt_roto' }))
+    expect(rows[0].taskTypeName).toBe('Rotoscopy')
+    expect(rows[0].klass).toBe(CLASS.DONE)
+  })
+
+  it('a shot with no task of the configured type counts as not started', () => {
+    const rows = buildShotRows(shots, settings({ shotStatusTaskTypeId: 'tt_paint' }))
+    expect(rows[0].klass).toBe(CLASS.NOT_STARTED)
+  })
+
+  it('explicit delivered/retake status ids override the flag-based classification', () => {
+    const rows = buildShotRows(
+      shots,
+      settings({ shotStatusTaskTypeId: 'tt_comp', deliveredStatusIds: ['st_wip'] })
+    )
+    expect(rows[0].klass).toBe(CLASS.DONE)
   })
 })
 

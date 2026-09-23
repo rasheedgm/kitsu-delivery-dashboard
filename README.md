@@ -1,9 +1,11 @@
 # Delivery Dashboard — Kitsu plugin
 
-A studio-wide "Delivery Command Center" for Kitsu: overdue deliveries, weekly
-quota, delivery load, overdue severity, today's handoffs, per-artist pressure,
-department pipeline, a task status matrix and a searchable, filterable delivery
-queue — all computed live from your Kitsu data.
+A studio-wide "Delivery Command Center" for Kitsu: a **Shots overview** (one
+representative task per shot — studio-configurable — driving overdue/not
+started/due today/delivered/retake/weekly quota at the shot level), a **Task
+overview** with the same numbers at the raw task level, department pipeline,
+a task status matrix, and a searchable, filterable delivery queue — all
+computed live from your Kitsu data.
 
 Every KPI, donut slice, bar, artist and department cell is a **drill-through**:
 click it and the Delivery Queue tab opens pre-filtered to exactly those tasks.
@@ -21,12 +23,61 @@ the Kitsu API instead of a spreadsheet.
 
 ## How it works
 
-- **Frontend-only.** No new API routes, no database tables, no migrations. The
-  Vue app reads Kitsu's core REST API and computes every metric in the browser.
+- **Mostly frontend.** The Vue app reads Kitsu's core REST API and computes
+  every metric in the browser. The one backend piece is a tiny studio-wide
+  **settings table** (see below) — everything else is still just reads.
 - **Studio scope.** Adds one sidebar entry. It aggregates across all open
   productions, with an in-UI production filter to narrow to one show.
 - Auth is automatic: the plugin runs same-origin inside the Kitsu iframe, so
   Zou's JWT cookie is sent with every request.
+
+## Shots overview vs. Task overview
+
+Kitsu has no separate "shot status" — a shot's status is really one of its
+tasks' statuses. This plugin lets a studio say **which** task type that is
+(e.g. "Client Delivery"), from **Settings**:
+
+- **Shots overview** (top of the Overview tab) — one row per shot, using that
+  configured task type's status (or, until one is configured, each shot's
+  chronologically last task as a reasonable default). Drives: Overdue, Not
+  started, Due today, Shots in scope, Retake, Delivered (×/total), Weekly
+  quota, and the "Shot status" donut. A shot with no task of the configured
+  type yet is treated as "not started".
+- **Task overview** (further down) — the same shape of numbers, but over
+  *every* task on every shot, unfiltered by department. Unaffected by the
+  Settings choice.
+- **Delivered** and **Retake**, for the Shots overview, can each be overridden
+  with an explicit list of task statuses (e.g. if your studio's "Approved"
+  status should count as delivered but doesn't have Kitsu's `is_done` flag
+  set). Leave both empty to fall back to Kitsu's own `is_done`/`is_retake`
+  flags (with a name-contains-"retake" fallback).
+- Clicking a Shots-overview number opens the Delivery Queue filtered to
+  exactly the tasks behind it (due-date bucket **and** the configured
+  department, when one is set).
+
+## Studio-wide settings — the plugin's one backend piece
+
+Checked directly against Zou's plugin system (`zou/app/utils/plugins.py`):
+`PluginManifest` persists only `id, name, description, version, maintainer,
+website, license, frontend_project_enabled, frontend_studio_enabled, icon` —
+**Kitsu has no settings/config framework for plugins at all**. Anything
+studio-wide has to be built by the plugin itself, so this one carries its own
+table:
+
+- `models.py` — one row, `plugin_delivery_dashboard_settings`
+  (`shot_status_task_type_id`, `delivered_status_ids`, `retake_status_ids`).
+  Never touches Zou's own tables.
+- `resources.py` — `GET /api/plugins/delivery_dashboard/settings` (any
+  logged-in user can read it, so everyone's dashboard agrees), `PUT` (admin
+  or manager only — `permissions.has_manager_permissions()`).
+- Editable from the **Settings** tab in the dashboard itself; read-only for
+  everyone else.
+- If a studio hasn't upgraded the backend yet (older install, migration not
+  run), the frontend catches the failed request and just falls back to the
+  defaults — the rest of the dashboard keeps working, only unconfigured.
+
+**Per-user** preferences (saved views, remembered production) still live in
+`localStorage`, same as before — no reason to put those in the shared table.
 
 ## Interactive features
 
@@ -44,34 +95,17 @@ the Kitsu API instead of a spreadsheet.
   (`lib/kitsuLinks.js`); same for a "Today's handoffs" row.
 - The production filter is remembered per browser across reloads.
 
-### Kitsu has no plugin-settings framework — how this plugin handles that
-
-Checked directly against Zou's plugin system (`zou/app/utils/plugins.py`):
-`PluginManifest` persists only `id, name, description, version, maintainer,
-website, license, frontend_project_enabled, frontend_studio_enabled, icon` —
-no settings schema, no admin-UI slot, no per-plugin key/value store. Anything
-configurable has to be built by the plugin itself:
-
-- **Per-user preferences** (saved views, remembered production) live in
-  `localStorage` — free, no backend, but not shared across a studio's machines.
-- **Studio-wide shared settings** (e.g. custom quota targets, which task types
-  count toward a department) would need the plugin to stop being frontend-only:
-  add `models.py` + `resources.py` + an Alembic migration, `zou
-  migrate-plugin-db`, and an admin-only write endpoint. Not implemented yet —
-  the current status/overdue/quota rules are derived entirely from Kitsu's own
-  task-status flags (`is_done`/`is_retake`/`is_default`), so there's nothing to
-  configure until a studio needs to override that logic.
-
 ### Data sources (core Kitsu endpoints)
 
 | Data | Endpoint |
 | --- | --- |
-| Studio name (page heading) | `GET /api/data/organisations` → `[0].name` |
+| Session (login state, admin/manager role, studio name) | `GET /api/auth/authenticated` |
 | Open productions | `GET /api/data/projects/open` |
 | People (artist names) | `GET /api/data/persons` |
 | Task types | `GET /api/data/task-types` |
 | Task statuses | `GET /api/data/task-status` |
 | Shots + their tasks | `GET /api/data/shots/with-tasks?project_id=:id` |
+| This plugin's settings | `GET`/`PUT /api/plugins/delivery_dashboard/settings` |
 
 ### Status classification
 
@@ -98,6 +132,9 @@ zou list-plugins                                        # should list "delivery_
 ```
 
 Reload Kitsu — **Delivery Dashboard** appears in the studio sidebar.
+`zou install-plugin` always runs any pending migrations as part of installing
+(fresh install or upgrade alike), so upgrading to a version with new settings
+fields is the same one command — no separate migration step.
 
 ## Install — Docker (`cgwire/cgwire` all-in-one image)
 
@@ -140,26 +177,42 @@ cd frontend
 npm test
 ```
 
+**Changing `models.py`?** Generate a new migration against a real Zou/Postgres
+(there's no way to apply/verify one without a running Zou):
+
+```bash
+zou migrate-plugin-db --path . --message "describe the change"
+```
+
+This only *generates* `migrations/versions/<rev>_....py` — it does **not**
+apply it (that only happens as part of `zou install-plugin`, on every install
+including upgrades). Commit the generated file, then install to actually run
+it and confirm the table looks right.
+
 ## Layout
 
 ```
 manifest.toml            plugin metadata (frontend_studio_enabled = true)
-__init__.py              empty routes + lifecycle hooks (frontend-only plugin)
+__init__.py              routes ("/settings") + lifecycle hooks
+models.py                studio-wide settings, one row (see "Studio-wide settings" above)
+resources.py             GET (any user) / PUT (admin or manager) for /settings
+migrations/versions/     Alembic migration(s) for models.py
 frontend/
   src/
-    api/kitsu.js          kitsu-client-js wrapper + typed getters
+    api/kitsu.js          kitsu-client-js wrapper + typed getters, incl. settings get/put
     composables/
-      useDashboardData.js  fetch + normalize all productions into task rows
-      useMetrics.js        reactive metric bundle bound to the production filter
+      useDashboardData.js  fetch + normalize all productions into task + shot rows
+      useSettings.js       studio-wide settings: load/save, reactive singleton
+      useMetrics.js        reactive metric bundle (task-level AND shot-level)
       useDrillThrough.js   navigate to the Delivery Queue with a filter patch
       useSavedViews.js     localStorage CRUD for named saved views
     lib/
       format.js            date math + status classification (unit-tested)
-      metrics.js            all KPI / bucket / pivot / queue computations (unit-tested)
+      metrics.js            KPI / bucket / pivot / queue / shot-row computations (unit-tested)
       filters.js            Delivery Queue filter <-> route query <-> chips (unit-tested)
       kitsuLinks.js          deep links into Kitsu's own shot pages
     components/             DonutCard, BarChartCard, SeverityCard, SavedViewsBar, …
-    views/                  OverviewView, ProductionView, DeliveryView
+    views/                  OverviewView, ProductionView, DeliveryView, SettingsView
 ```
 
 ## Notes / possible follow-ups
@@ -170,7 +223,9 @@ frontend/
   per-production fan-out fetch.
 - Assets/edits are out of scope — the dashboard is shot-focused, like the
   original reference.
-- Shared, studio-wide settings (quota targets, custom risk thresholds) need a
-  small plugin backend — see "Kitsu has no plugin-settings framework" above.
-- Saved views are per-browser only; a "shared team view" would need the same
-  backend as above.
+- The settings table now exists, so a "shared team view" (rather than
+  per-browser `localStorage`) or configurable quota targets / risk thresholds
+  are a natural next addition to the same table.
+- Settings are studio-global; a per-production override (e.g. different shot-
+  status task type per show) would need `project_id` added to the settings
+  row/lookup.

@@ -2,15 +2,18 @@
 import { computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useDashboardData } from './composables/useDashboardData.js'
+import { useSettings } from './composables/useSettings.js'
 
 const route = useRoute()
 const router = useRouter()
 const { state, load, selectedProjectId, filteredProjects } = useDashboardData()
+const { load: loadSettings } = useSettings()
 
 const tabs = [
   { to: '/', label: 'Overview' },
   { to: '/production', label: 'Production' },
-  { to: '/delivery', label: 'Delivery queue' }
+  { to: '/delivery', label: 'Delivery queue' },
+  { to: '/settings', label: 'Settings' }
 ]
 
 const lastUpdated = computed(() =>
@@ -56,6 +59,7 @@ onMounted(() => {
   applyTheme(currentThemeParam())
   window.addEventListener('message', onMessage)
   load()
+  loadSettings()
 })
 onBeforeUnmount(() => window.removeEventListener('message', onMessage))
 </script>
@@ -99,7 +103,7 @@ onBeforeUnmount(() => window.removeEventListener('message', onMessage))
         >{{ t.label }}</button>
       </nav>
       <router-view />
-      <div class="footer">Delivery Dashboard · Kitsu plugin · v0.1.0</div>
+      <div class="footer">Delivery Dashboard · Kitsu plugin · v0.3.0</div>
     </template>
   </div>
 </template>
