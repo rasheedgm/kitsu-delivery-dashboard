@@ -87,13 +87,29 @@ table:
   exactly what you clicked (`lib/filters.js` + `composables/useDrillThrough.js`).
 - **Filterable Delivery Queue.** Search text, due-date bucket (overdue / today
   / tomorrow / this week / any / an exact date), status, department and
-  artist — any combination, encoded in the URL's hash query so it's
-  shareable/bookmarkable and survives a reload.
+  artist — any combination, encoded in the route's hash query
+  (`lib/filters.js`).
 - **Saved views**, per browser: name the current filter + production and it
   reappears as a chip you can reapply later (`composables/useSavedViews.js`).
 - **Click a queue row → opens that shot directly in Kitsu** in a new tab
   (`lib/kitsuLinks.js`); same for a "Today's handoffs" row.
 - The production filter is remembered per browser across reloads.
+
+**On "shareable" — read this if you're wiring up links.** Kitsu embeds this
+app in an `<iframe>`, so the browser's address bar always shows Kitsu's own
+fixed plugin URL (e.g. `.../plugins/delivery_dashboard`) — it never reflects
+this app's internal hash route, no matter how the filter changes. Three real
+mechanisms exist instead:
+- **Copy link** button (Delivery Queue) copies the iframe's own
+  `window.location.href` — paste it into a **new browser tab** (not Kitsu's
+  address bar) and it reopens that exact filter, same-origin cookie auth and
+  all.
+- **Saved views** (above) — a named filter + production, restorable with one
+  click, entirely within the embedded session.
+- **Last-filter memory** — the Delivery Queue remembers your last filter in
+  `localStorage` and restores it the next time you land there with no filter
+  in the URL, which is what actually makes it "survive a reload" (a real
+  browser refresh reloads the iframe at its bare `src`, with no hash at all).
 
 ### Data sources (core Kitsu endpoints)
 

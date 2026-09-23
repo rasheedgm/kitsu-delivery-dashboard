@@ -103,7 +103,7 @@ onBeforeUnmount(() => window.removeEventListener('message', onMessage))
         >{{ t.label }}</button>
       </nav>
       <router-view />
-      <div class="footer">Delivery Dashboard · Kitsu plugin · v0.3.0</div>
+      <div class="footer">Delivery Dashboard · Kitsu plugin · v0.3.1</div>
     </template>
   </div>
 </template>

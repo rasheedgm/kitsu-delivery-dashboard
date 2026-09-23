@@ -28,6 +28,35 @@ function confirmSave() {
 function cancelNaming() {
   naming.value = false
 }
+
+// "Shareable" means this iframe's own URL (window.location.href), not the
+// Kitsu page's address bar — Kitsu embeds the dashboard in an iframe, so the
+// browser's address bar always shows Kitsu's fixed plugin URL and never
+// reflects what's selected in here. Pasted into a *new* browser tab, this
+// link reopens the same session (same login cookie) at the same filter.
+const linkStatus = ref('idle') // idle | copied | manual
+const linkUrl = ref('')
+let resetTimer = null
+
+async function onCopyLink() {
+  linkUrl.value = window.location.href
+  try {
+    await navigator.clipboard.writeText(linkUrl.value)
+    linkStatus.value = 'copied'
+    clearTimeout(resetTimer)
+    resetTimer = setTimeout(() => {
+      linkStatus.value = 'idle'
+    }, 2500)
+  } catch {
+    // Clipboard access can be blocked inside an embedded iframe — fall back
+    // to a selectable field instead of failing silently.
+    linkStatus.value = 'manual'
+  }
+}
+
+function selectLinkText(event) {
+  event.target.select()
+}
 </script>
 
 <template>
@@ -57,5 +86,17 @@ function cancelNaming() {
       <button type="button" class="saveViewBtn ghost" @click="cancelNaming">Cancel</button>
     </form>
     <button v-else type="button" class="saveViewBtn" @click="startNaming">+ Save current view</button>
+
+    <button
+      type="button"
+      class="saveViewBtn"
+      title="Copy a link to this exact filter — paste it into a new browser tab (not Kitsu's own address bar, which won't show it)"
+      @click="onCopyLink"
+    >{{ linkStatus === 'copied' ? 'Copied!' : 'Copy link to this view' }}</button>
+    <span class="viewsHint">Kitsu embeds this page, so its own address bar won't show your filter — use "Copy link" or a saved view instead.</span>
+  </div>
+  <div v-if="linkStatus === 'manual'" class="manualLink">
+    <span>Clipboard access is blocked here — select and copy manually:</span>
+    <input readonly class="manualLinkInput" :value="linkUrl" @click="selectLinkText">
   </div>
 </template>

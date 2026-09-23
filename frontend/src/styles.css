@@ -175,6 +175,9 @@ tr.clickable{cursor:pointer}
 .saveViewForm{display:flex;align-items:center;gap:6px}
 .saveViewInput{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 12px;font-size:9px;outline:none;min-width:140px}
 .saveViewInput:focus{border-color:var(--blue)}
+.viewsHint{font-size:8px;color:var(--muted);margin-left:2px}
+.manualLink{display:flex;align-items:center;gap:8px;margin:-2px 0 10px;font-size:8px;color:var(--muted)}
+.manualLinkInput{flex:1;border:1px solid var(--line);background:var(--card);border-radius:7px;padding:6px 9px;font-size:9px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink)}
 
 /* Settings */
 .settingsBlock{padding:16px 0;border-top:1px solid var(--line)}

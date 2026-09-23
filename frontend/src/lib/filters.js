@@ -15,6 +15,15 @@ export const DEFAULT_FILTER = Object.freeze({
 
 const FILTER_KEYS = Object.keys(DEFAULT_FILTER)
 
+// True if a route-query object names at least one of *our* filter fields —
+// as opposed to unrelated params Kitsu adds (dark_theme, production_id) or
+// artifacts like this dev build's own ?v=/&demo= cache-busters. Used to tell
+// "arrived via a link/drill-through with an explicit filter" apart from "just
+// landed here with nothing filter-related in the URL".
+export function hasFilterParams(query = {}) {
+  return FILTER_KEYS.some((key) => query[key] !== undefined)
+}
+
 const DUE_LABEL = {
   all: 'Any due date',
   overdue: 'Overdue',
