@@ -109,11 +109,11 @@ appears in the left sidebar.
 Every tagged release attaches a ready `delivery_dashboard-<version>.zip`. Grab
 the download link for the current version from
 <https://github.com/rasheedgm/kitsu-delivery-dashboard/releases/latest>, then
-if the container has outbound internet (example uses v0.3.0 — check the
+if the container has outbound internet (example uses v0.3.1 — check the
 releases page for the current filename):
 
 ```sh
-cd /tmp && wget -O dd.zip "https://github.com/rasheedgm/kitsu-delivery-dashboard/releases/download/v0.3.0/delivery_dashboard-0.3.0.zip"
+cd /tmp && wget -O dd.zip "https://github.com/rasheedgm/kitsu-delivery-dashboard/releases/download/v0.3.1/delivery_dashboard-0.3.1.zip"
 cd CWD && ZOU install-plugin --path /tmp/dd.zip --force
 ```
 
