@@ -15,9 +15,31 @@ const tabs = [
   { to: '/', label: 'Overview' },
   { to: '/production', label: 'Production' },
   { to: '/tasks', label: 'Task queue' },
-  { to: '/schedule', label: 'Schedule' },
-  { to: '/settings', label: 'Settings' }
+  { to: '/schedule', label: 'Schedule' }
 ]
+
+// The schedule board groups tasks by person across whatever's in scope — with
+// every open production mixed together, a person's row would interleave work
+// from unrelated shows with no way to tell them apart. Require a single
+// production instead of hiding the tab outright, so it's still discoverable
+// and the reason it's disabled is visible right on it.
+const scheduleNeedsProject = computed(() => selectedProjectId.value === 'all')
+
+// Covers both switching the dropdown to "All" while already on the board,
+// and landing straight on #/schedule (a bookmark, a restored tab) when "All"
+// is the remembered production.
+watch(
+  () => [route.path, scheduleNeedsProject.value],
+  ([path, needs]) => {
+    if (path === '/schedule' && needs) router.replace('/')
+  },
+  { immediate: true }
+)
+
+function goTab(to) {
+  if (to === '/schedule' && scheduleNeedsProject.value) return
+  router.push({ path: to, query: route.query })
+}
 
 const lastUpdated = computed(() =>
   new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
@@ -83,6 +105,13 @@ onBeforeUnmount(() => window.removeEventListener('message', onMessage))
           PRODUCTIONS <b>{{ filteredProjects.length }}</b><br>
           UPDATED <b>{{ lastUpdated }}</b>
         </div>
+        <button
+          type="button"
+          class="settingsBtn"
+          :class="{ active: route.path === '/settings' }"
+          title="Settings"
+          @click="router.push({ path: '/settings', query: route.query })"
+        >⚙</button>
       </div>
     </header>
 
@@ -101,12 +130,13 @@ onBeforeUnmount(() => window.removeEventListener('message', onMessage))
           v-for="t in tabs"
           :key="t.to"
           class="tab"
-          :class="{ active: route.path === t.to }"
-          @click="router.push({ path: t.to, query: route.query })"
+          :class="{ active: route.path === t.to, disabled: t.to === '/schedule' && scheduleNeedsProject }"
+          :title="t.to === '/schedule' && scheduleNeedsProject ? 'Pick a single production above to use the Schedule board' : ''"
+          @click="goTab(t.to)"
         >{{ t.label }}<span v-if="t.to === '/schedule' && pendingCount" class="tabBadge">{{ pendingCount }}</span></button>
       </nav>
       <router-view />
-      <div class="footer">Studio Dashboard · Kitsu plugin · v0.4.1</div>
+      <div class="footer">Studio Dashboard · Kitsu plugin · v0.4.2</div>
     </template>
   </div>
 </template>

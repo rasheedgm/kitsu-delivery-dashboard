@@ -13,10 +13,13 @@ export function openShot(projectId, shotId) {
   if (url) window.open(url, '_blank', 'noopener')
 }
 
-// Square thumbnail for a task's latest preview (task.last_preview_file_id).
-// Same-origin + cookie auth, so a plain <img src> works exactly like it does
-// in Kitsu's own UI — no fetch/blob dance needed. Returns null when the task
-// has no preview yet; callers should fall back to a placeholder.
+// Square thumbnail for a preview file id — either a task's own latest
+// preview (task.last_preview_file_id) or, when that's missing, the shot's
+// cover image (shot.preview_file_id, the same one Kitsu shows on the shot's
+// page/grid); see useDashboardData.js's row-building fallback. Same-origin +
+// cookie auth, so a plain <img src> works exactly like it does in Kitsu's own
+// UI — no fetch/blob dance needed. Returns null when neither exists; callers
+// should fall back to a placeholder.
 export function previewThumbUrl(previewFileId) {
   return previewFileId ? `/api/pictures/thumbnails-square/preview-files/${previewFileId}.png` : null
 }

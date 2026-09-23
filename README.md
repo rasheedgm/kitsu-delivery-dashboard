@@ -77,8 +77,8 @@ table:
 - `resources.py` — `GET /api/plugins/delivery_dashboard/settings` (any
   logged-in user can read it, so everyone's dashboard agrees), `PUT` (admin
   or manager only — `permissions.has_manager_permissions()`).
-- Editable from the **Settings** tab in the dashboard itself; read-only for
-  everyone else.
+- Editable from the **Settings** screen (gear icon, top right of the header)
+  in the dashboard itself; read-only for everyone else.
 - If a studio hasn't upgraded the backend yet (older install, migration not
   run), the frontend catches the failed request and just falls back to the
   defaults — the rest of the dashboard keeps working, only unconfigured.
@@ -89,12 +89,21 @@ table:
 ## Schedule board
 
 A weekly grid: one row per person, one column per day (Monday–Sunday), each
-cell holding a card per task due that person that day (thumbnail from the
-task's `last_preview_file_id` via Kitsu's own
-`/pictures/thumbnails-square/preview-files/<id>.png`, falling back to shot
-initials when there's no preview yet). A task with no assignee lands on a
-synthetic "Unassigned" row instead of disappearing; a multi-assignee task
-appears on every assignee's row.
+cell holding a card per task due that person that day. The card's thumbnail
+prefers the task's own `last_preview_file_id`; if that task has no preview
+yet (common for early-stage tasks like roto/matchmove), it falls back to the
+shot's own cover image (`preview_file_id` — the same thumbnail Kitsu shows on
+the shot's page/grid), and finally to a plain initials tile if neither
+exists. Both render via Kitsu's own
+`/pictures/thumbnails-square/preview-files/<id>.png`. A task with no assignee
+lands on a synthetic "Unassigned" row instead of disappearing; a
+multi-assignee task appears on every assignee's row.
+
+The board only makes sense for one production at a time — a person's row
+would otherwise interleave tasks from unrelated shows with no visual way to
+tell them apart. The Schedule tab is disabled (with an explanatory tooltip)
+whenever "All open productions" is selected, and switching to "All" while
+on the board navigates you back to Overview.
 
 **Cards are draggable** — dropping one on a different day changes the task's
 `due_date`; dropping it on a different person's row changes its `assignees`.
@@ -180,8 +189,8 @@ mechanisms exist instead:
 | People (artist names) | `GET /api/data/persons` |
 | Task types | `GET /api/data/task-types` |
 | Task statuses | `GET /api/data/task-status` |
-| Shots + their tasks | `GET /api/data/shots/with-tasks?project_id=:id` |
-| Task thumbnail | `GET /api/pictures/thumbnails-square/preview-files/:id.png` |
+| Shots + their tasks (incl. each shot's `preview_file_id`) | `GET /api/data/shots/with-tasks?project_id=:id` |
+| Thumbnail (task's `last_preview_file_id` or shot's `preview_file_id`) | `GET /api/pictures/thumbnails-square/preview-files/:id.png` |
 | Reschedule / reassign a task | `PUT /api/data/tasks/:id` |
 | This plugin's settings | `GET`/`PUT /api/plugins/delivery_dashboard/settings` |
 

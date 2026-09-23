@@ -71,20 +71,28 @@ function onDocClick(event) {
 }
 // The board scrolls internally; rather than continuously reposition, just
 // close on scroll/resize so a stale-positioned popover is never left behind.
+// Scroll events don't bubble, but the capturing listener still sees them on
+// their way down to the target — including scrolls *inside* the popover's
+// own results list, which would otherwise close it the instant you tried to
+// scroll. Ignore those.
+function onWindowScroll(event) {
+  if (popover.value?.contains(event.target)) return
+  close()
+}
 watch(open, (isOpen) => {
   if (isOpen) {
     document.addEventListener('mousedown', onDocClick)
-    window.addEventListener('scroll', close, true)
+    window.addEventListener('scroll', onWindowScroll, true)
     window.addEventListener('resize', close)
   } else {
     document.removeEventListener('mousedown', onDocClick)
-    window.removeEventListener('scroll', close, true)
+    window.removeEventListener('scroll', onWindowScroll, true)
     window.removeEventListener('resize', close)
   }
 })
 onBeforeUnmount(() => {
   document.removeEventListener('mousedown', onDocClick)
-  window.removeEventListener('scroll', close, true)
+  window.removeEventListener('scroll', onWindowScroll, true)
   window.removeEventListener('resize', close)
 })
 </script>

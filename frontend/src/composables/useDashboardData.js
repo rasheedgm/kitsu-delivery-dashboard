@@ -159,7 +159,11 @@ async function load() {
             klass: classifyStatus(status),
             dueDate: parseDate(task.due_date || task.end_date),
             startDate: parseDate(task.start_date),
-            previewFileId: task.last_preview_file_id || null,
+            // Fall back to the shot's own cover image (the thumbnail Kitsu
+            // shows on the shot's page/grid) when this particular task has no
+            // preview of its own yet — most early-stage tasks (roto, mm)
+            // never get a review submitted, so this is the common case.
+            previewFileId: task.last_preview_file_id || shot.preview_file_id || null,
             assignees,
             assigneeNames: assignees
               .map((id) => (personById[id] ? personName(personById[id]) : null))
