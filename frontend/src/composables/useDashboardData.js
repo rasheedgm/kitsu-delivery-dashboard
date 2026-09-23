@@ -15,6 +15,7 @@ const state = reactive({
   loaded: false,
   loggedIn: true,
   isAdmin: false,
+  role: null, // 'admin' | 'manager' | 'supervisor' | 'user' | 'client' | 'vendor' — gates the Schedule board's drag permissions
   error: null,
   studioName: null,
   projects: [],
@@ -85,6 +86,7 @@ async function load() {
         shots: groupRowsIntoShots(demo.rows),
         loggedIn: true,
         isAdmin: true,
+        role: 'admin',
         loaded: true
       })
       return
@@ -93,6 +95,7 @@ async function load() {
     const session = await getSession()
     state.loggedIn = session.loggedIn
     state.isAdmin = session.isAdmin
+    state.role = session.role
     state.studioName = session.studioName
     if (!state.loggedIn) return
 
@@ -155,6 +158,7 @@ async function load() {
             statusColor: status ? status.color : '#999',
             klass: classifyStatus(status),
             dueDate: parseDate(task.due_date || task.end_date),
+            previewFileId: task.last_preview_file_id || null,
             assignees,
             assigneeNames: assignees
               .map((id) => (personById[id] ? personName(personById[id]) : null))
@@ -180,6 +184,25 @@ async function load() {
     state.error = err?.message || String(err)
   } finally {
     state.loading = false
+  }
+}
+
+// Mutate one task row in place after a schedule-board drag (optimistic
+// apply, or revert-to-previous on a failed write) — `state.rows` and
+// `state.shots[].tasks` share the same row objects, so this updates every
+// view at once without a re-fetch. `patch` uses Kitsu's own field names
+// (due_date, assignees) so it can be passed straight from computeMovePatch /
+// the API response.
+function applyTaskPatch(taskId, patch) {
+  const row = state.rows.find((r) => r.taskId === taskId)
+  if (!row) return
+  if ('due_date' in patch) row.dueDate = parseDate(patch.due_date)
+  if ('assignees' in patch) {
+    const personById = indexById(state.persons)
+    row.assignees = patch.assignees
+    row.assigneeNames = patch.assignees
+      .map((id) => (personById[id] ? personName(personById[id]) : null))
+      .filter(Boolean)
   }
 }
 
@@ -211,6 +234,7 @@ export function useDashboardData() {
     filteredRows,
     filteredShots,
     filteredProjects,
-    filteredShotCount
+    filteredShotCount,
+    applyTaskPatch
   }
 }

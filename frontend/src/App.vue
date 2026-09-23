@@ -13,6 +13,7 @@ const tabs = [
   { to: '/', label: 'Overview' },
   { to: '/production', label: 'Production' },
   { to: '/tasks', label: 'Task queue' },
+  { to: '/schedule', label: 'Schedule' },
   { to: '/settings', label: 'Settings' }
 ]
 
@@ -103,7 +104,7 @@ onBeforeUnmount(() => window.removeEventListener('message', onMessage))
         >{{ t.label }}</button>
       </nav>
       <router-view />
-      <div class="footer">Delivery Dashboard · Kitsu plugin · v0.3.2</div>
+      <div class="footer">Studio Dashboard · Kitsu plugin · v0.4.0</div>
     </template>
   </div>
 </template>

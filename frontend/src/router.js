@@ -2,12 +2,14 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 import OverviewView from './views/OverviewView.vue'
 import ProductionView from './views/ProductionView.vue'
 import TaskQueueView from './views/TaskQueueView.vue'
+import ScheduleView from './views/ScheduleView.vue'
 import SettingsView from './views/SettingsView.vue'
 
 const routes = [
   { path: '/', name: 'overview', component: OverviewView },
   { path: '/production', name: 'production', component: ProductionView },
   { path: '/tasks', name: 'tasks', component: TaskQueueView },
+  { path: '/schedule', name: 'schedule', component: ScheduleView },
   { path: '/settings', name: 'settings', component: SettingsView }
 ]
 

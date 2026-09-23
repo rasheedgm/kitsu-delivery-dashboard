@@ -1,16 +1,23 @@
-# Delivery Dashboard — Kitsu plugin
+# Studio Dashboard — Kitsu plugin
 
-A studio-wide "Delivery Command Center" for Kitsu: a **Shots overview** (one
-representative task per shot — studio-configurable — driving overdue/not
-started/due today/delivered/retake/weekly quota at the shot level), a **Task
-overview** with the same numbers at the raw task level, task type pipeline,
-a task status matrix, and a searchable, filterable task queue — all
-computed live from your Kitsu data.
+A studio-wide dashboard for Kitsu: a **Shots overview** (one representative
+task per shot — studio-configurable — driving overdue/not started/due
+today/delivered/retake/weekly quota at the shot level), a **Task overview**
+with the same numbers at the raw task level, a task type pipeline, a task
+status matrix, a searchable/filterable task queue, and a **drag-and-drop
+weekly Schedule board** — all computed live from your Kitsu data.
 
 Every KPI, donut slice, bar, artist and task-type cell is a **drill-through**:
 click it and the Task Queue tab opens pre-filtered to exactly those tasks.
 Any filter combination can be **saved as a named view** and clicking a row in
 the queue **opens that shot directly in Kitsu**.
+
+> The plugin's internal id/manifest name stayed `delivery_dashboard` /
+> "Delivery Dashboard" for a while during early development — renamed to
+> "Studio Dashboard" once Settings, Shots overview and the Schedule board made
+> it more than a delivery tracker. The install `id` is left as `delivery_dashboard`
+> on purpose (changing it would orphan any existing install — Kitsu tracks
+> plugins by id, not display name).
 
 Rebuilt from `reference.html` (a static Excel snapshot) into a plugin that reads
 the Kitsu API instead of a spreadsheet.
@@ -79,6 +86,38 @@ table:
 **Per-user** preferences (saved views, remembered production) still live in
 `localStorage`, same as before — no reason to put those in the shared table.
 
+## Schedule board
+
+A weekly grid: one row per person, one column per day (Monday–Sunday), each
+cell holding a card per task due that person that day (thumbnail from the
+task's `last_preview_file_id` via Kitsu's own
+`/pictures/thumbnails-square/preview-files/<id>.png`, falling back to shot
+initials when there's no preview yet). A task with no assignee lands on a
+synthetic "Unassigned" row instead of disappearing; a multi-assignee task
+appears on every assignee's row.
+
+**Cards are draggable** — dropping one on a different day changes the task's
+`due_date`; dropping it on a different person's row changes its `assignees`.
+This writes back to Kitsu (`PUT /data/tasks/:id`), so it's gated by Kitsu's
+own permission rules (`zou/app/services/user_service.py
+check_supervisor_task_access`), mirrored client-side in `useSchedule.js` so
+the UI doesn't offer a drag it can't perform:
+
+| Role | Move within a row (due date) | Move across rows (reassign) |
+| --- | --- | --- |
+| admin / manager | ✅ | ✅ |
+| supervisor | ✅ (their department's task types) | ❌ |
+| everyone else | ❌ (board is read-only) | ❌ |
+
+A supervisor's department restriction isn't replicated client-side — a drag
+outside their department still gets attempted and Kitsu's own 403 triggers a
+revert, same as any other failed move. Moving a task that has more than one
+assignee to a different row asks for confirmation first, since the drop
+target becomes its *only* assignee (the other one is silently dropped
+otherwise) — a real, easy-to-hit surprise, not just a hypothetical edge case.
+Every move is optimistic (applies to the board immediately) and reverts
+automatically if the write fails.
+
 ## Interactive features
 
 - **Drill-through everywhere.** KPI cards, the status/quota donuts, the
@@ -123,6 +162,8 @@ mechanisms exist instead:
 | Task types | `GET /api/data/task-types` |
 | Task statuses | `GET /api/data/task-status` |
 | Shots + their tasks | `GET /api/data/shots/with-tasks?project_id=:id` |
+| Task thumbnail | `GET /api/pictures/thumbnails-square/preview-files/:id.png` |
+| Reschedule / reassign a task | `PUT /api/data/tasks/:id` |
 | This plugin's settings | `GET`/`PUT /api/plugins/delivery_dashboard/settings` |
 
 ### Status classification
@@ -222,15 +263,17 @@ frontend/
       useDashboardData.js  fetch + normalize all productions into task + shot rows
       useSettings.js       studio-wide settings: load/save, reactive singleton
       useMetrics.js        reactive metric bundle (task-level AND shot-level)
+      useSchedule.js        weekly grid + drag-drop move (optimistic + revert), permission gating
       useDrillThrough.js   navigate to the Task Queue with a filter patch
       useSavedViews.js     localStorage CRUD for named saved views
     lib/
       format.js            date math + status classification (unit-tested)
       metrics.js            KPI / bucket / pivot / queue / shot-row computations (unit-tested)
       filters.js            Task Queue filter <-> route query <-> chips (unit-tested)
-      kitsuLinks.js          deep links into Kitsu's own shot pages
-    components/             DonutCard, BarChartCard, SeverityCard, SavedViewsBar, …
-    views/                  OverviewView, ProductionView, TaskQueueView, SettingsView
+      schedule.js            week math + grid grouping + move-patch computation (unit-tested)
+      kitsuLinks.js          deep links into Kitsu's own shot pages + preview thumbnail URLs
+    components/             DonutCard, BarChartCard, SeverityCard, SavedViewsBar, ScheduleCard, …
+    views/                  OverviewView, ProductionView, TaskQueueView, ScheduleView, SettingsView
 ```
 
 ## Notes / possible follow-ups

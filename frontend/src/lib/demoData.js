@@ -49,12 +49,20 @@ function buildShots(prefix, count, seed) {
     const tasks = TYPES.filter((_, idx) => idx === 3 || rand() > 0.55).map((type) => {
       const st = STATUSES[Math.floor(rand() * STATUSES.length)]
       const due = iso(Math.floor(rand() * 40) - 25)
+      const first = Math.floor(rand() * PERSONS.length)
+      // Occasionally co-assign a second person — exercises the schedule
+      // board's "moving this reassigns it away from a co-assignee" guard.
+      const assignees = [PERSONS[first].id]
+      if (rand() > 0.85) {
+        const second = (first + 1 + Math.floor(rand() * (PERSONS.length - 1))) % PERSONS.length
+        assignees.push(PERSONS[second].id)
+      }
       return {
         id: `${prefix}_${num}_${type.id}`,
         task_type_id: type.id,
         task_status_id: st.id,
         due_date: due,
-        assignees: [PERSONS[Math.floor(rand() * PERSONS.length)].id]
+        assignees
       }
     })
     shots.push({ id: `${prefix}_${num}`, name: `${prefix}_${num}`, sequence_name: prefix, tasks })

@@ -36,14 +36,17 @@ function asList(data, path) {
   throw new Error(`GET ${path} returned ${data === null ? 'null' : typeof data}, expected a list`)
 }
 
-// Session info in one call: is the user logged in, who they are (for the
-// admin-only settings gate), and the studio's organisation (page heading).
+// Session info in one call: is the user logged in, who they are (role gates
+// both the Settings screen and how much the schedule board lets them drag),
+// and the studio's organisation (page heading).
 export async function getSession() {
   const data = await get('auth/authenticated', { optional: true })
-  if (!data) return { loggedIn: false, isAdmin: false, studioName: null }
+  if (!data) return { loggedIn: false, isAdmin: false, role: null, studioName: null }
+  const role = data.user?.role || null
   return {
     loggedIn: true,
-    isAdmin: data.user?.role === 'admin',
+    isAdmin: role === 'admin',
+    role,
     studioName: data.organisation?.name?.trim() || null
   }
 }
@@ -83,4 +86,14 @@ export async function getPluginSettings() {
 
 export async function savePluginSettings(patch) {
   return put('/plugins/delivery_dashboard/settings', patch)
+}
+
+// Reschedule/reassign a task from the Schedule board's drag-and-drop. `patch`
+// is only the fields that changed (see lib/schedule.js computeMovePatch) —
+// Kitsu enforces who's allowed to change what (admin/manager: anything;
+// supervisor: due_date and a few others, not assignees; everyone else: none
+// of this), so a drag a user isn't permitted to make comes back as an error
+// for the caller to revert, same as any other write.
+export async function updateTask(taskId, patch) {
+  return put(`/data/tasks/${taskId}`, patch)
 }

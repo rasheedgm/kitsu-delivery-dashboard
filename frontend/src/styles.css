@@ -197,6 +197,38 @@ tr.clickable{cursor:pointer}
 .savedNote{font-size:9px;color:var(--green);font-weight:700}
 .savedNote.err{color:var(--red)}
 
+/* Schedule board */
+.schedHead{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+.schedNav{display:flex;gap:6px}
+.schedWeekLabel{font-size:12px;font-weight:850}
+.schedPermNote{font-size:8px;color:var(--muted);margin-left:auto}
+.schedConfirm{display:flex;align-items:center;justify-content:space-between;gap:14px;background:var(--amber2);border:1px solid #eeddb7;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:9px;line-height:1.5}
+.schedConfirm.err{background:var(--red2);border-color:#f0cfcc;color:var(--red);font-weight:700}
+.schedConfirmActions{display:flex;gap:8px;flex:0 0 auto}
+.schedBoardCard{padding:0;overflow:hidden}
+.schedBoard{overflow:auto;max-height:74vh}
+.schedGrid{display:grid;grid-template-columns:150px repeat(var(--sched-cols),minmax(130px,1fr));min-width:max-content}
+.schedCorner{position:sticky;top:0;left:0;z-index:3;background:var(--card);border-bottom:1px solid var(--line);border-right:1px solid var(--line)}
+.schedDayHead{position:sticky;top:0;z-index:2;background:var(--card);border-bottom:1px solid var(--line);border-left:1px solid var(--line);padding:8px 10px;text-align:center}
+.schedDayHead.today{background:var(--blue2)}
+.schedWeekday{display:block;font-size:8px;font-weight:800;color:var(--muted);letter-spacing:.05em}
+.schedDayNum{display:block;font-size:14px;font-weight:850;margin-top:1px}
+.schedRowName{position:sticky;left:0;z-index:1;background:var(--card);border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:10px;font-size:9px;font-weight:750;display:flex;align-items:center}
+.schedRowName.unassigned{color:var(--muted);font-style:italic}
+.schedCell{border-left:1px solid var(--line);border-bottom:1px solid var(--line);padding:6px;display:flex;flex-direction:column;gap:6px;min-height:56px}
+.schedCell.today{background:var(--blue2)}
+.schedCell.over{background:var(--purple2);outline:2px dashed var(--purple);outline-offset:-2px}
+.schedCard{display:flex;gap:7px;align-items:center;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:5px;cursor:pointer}
+.schedCard.draggable{cursor:grab}
+.schedCard.draggable:active{cursor:grabbing}
+.schedThumb{width:32px;height:32px;border-radius:6px;overflow:hidden;flex:0 0 auto;background:var(--line);display:grid;place-items:center}
+.schedThumb img{width:100%;height:100%;object-fit:cover;display:block}
+.schedThumbFallback{font-size:9px;font-weight:800;color:var(--muted)}
+.schedCardBody{min-width:0;flex:1 1 auto}
+.schedShot{font:800 8px ui-monospace,SFMono-Regular,Menlo,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.schedType{font-size:7px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.schedPill{margin-top:2px;font-size:6px;padding:2px 5px}
+
 @media(max-width:1050px){
  .grid2,.grid3{grid-template-columns:1fr}
  .kpis{grid-template-columns:repeat(3,1fr)}
