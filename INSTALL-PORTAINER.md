@@ -104,13 +104,14 @@ appears in the left sidebar.
 
 ## 6. Fallback: install from a zip (no git in the container)
 
-Every tagged release attaches a ready `delivery_dashboard-<version>.zip`:
-<https://github.com/rasheedgm/kitsu-delivery-dashboard/releases/latest>
-
-If the container has outbound internet:
+Every tagged release attaches a ready `delivery_dashboard-<version>.zip`. Grab
+the download link for the current version from
+<https://github.com/rasheedgm/kitsu-delivery-dashboard/releases/latest>, then
+if the container has outbound internet (example uses v0.2.0 — check the
+releases page for the current filename):
 
 ```sh
-cd /tmp && wget -O dd.zip "https://github.com/rasheedgm/kitsu-delivery-dashboard/releases/download/v0.1.0/delivery_dashboard-0.1.0.zip"
+cd /tmp && wget -O dd.zip "https://github.com/rasheedgm/kitsu-delivery-dashboard/releases/download/v0.2.0/delivery_dashboard-0.2.0.zip"
 cd CWD && ZOU install-plugin --path /tmp/dd.zip --force
 ```
 
