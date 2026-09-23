@@ -156,8 +156,13 @@ describe('queueRows', () => {
     row({ shotName: 'A_0040', taskTypeName: 'Compositing', assigneeNames: ['Anees'], klass: CLASS.WIP, dueDate: d(2026, 9, 20) }) // future
   ]
 
-  it('defaults to overdue, sorted by days late descending', () => {
+  it('defaults to any due date, sorted by due date ascending (an empty filter is not "overdue")', () => {
     const q = queueRows(rows, {}, TODAY)
+    expect(q.map((r) => r.shot)).toEqual(['A_0010', 'A_0030', 'A_0020', 'A_0040'])
+  })
+
+  it('due "overdue" must be requested explicitly, and sorts by days late descending', () => {
+    const q = queueRows(rows, { due: 'overdue' }, TODAY)
     expect(q.map((r) => r.shot)).toEqual(['A_0010'])
   })
 

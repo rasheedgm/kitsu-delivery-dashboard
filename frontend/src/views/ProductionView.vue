@@ -7,7 +7,7 @@ import DonutCard from '../components/DonutCard.vue'
 import DepartmentPipeline from '../components/DepartmentPipeline.vue'
 import StatusMatrix from '../components/StatusMatrix.vue'
 
-const { departments, statusMatrix, rows } = useMetrics()
+const { departments, statusMatrix, rows, shotStatusDeptName } = useMetrics()
 const { goToQueue } = useDrillThrough()
 
 const executionSegments = computed(() => {
@@ -33,17 +33,17 @@ const inProgressTotal = computed(() => executionSegments.value[0].count)
   <section>
     <div class="grid2">
       <DonutCard
-        title="Department execution"
+        title="Task type execution"
         :hint="rows.length + ' tasks'"
         :center-value="inProgressTotal + '/' + rows.length"
         center-label="in progress"
         :segments="executionSegments"
         clickable
-        note="Required = every shot task of that department. In progress = anything not at a todo or done status."
+        note="Required = every shot task of that task type. In progress = anything not at a todo or done status."
         @select="(s) => goToQueue({ status: s.key, due: 'all' })"
       />
-      <DepartmentPipeline :departments="departments" @select="goToQueue" />
+      <DepartmentPipeline :departments="departments" :highlight="shotStatusDeptName" @select="goToQueue" />
     </div>
-    <StatusMatrix :matrix="statusMatrix" @select="goToQueue" />
+    <StatusMatrix :matrix="statusMatrix" :highlight="shotStatusDeptName" @select="goToQueue" />
   </section>
 </template>

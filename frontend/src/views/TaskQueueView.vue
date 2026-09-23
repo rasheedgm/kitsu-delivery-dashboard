@@ -5,7 +5,7 @@ import { useMetrics } from '../composables/useMetrics.js'
 import { useDashboardData } from '../composables/useDashboardData.js'
 import { useSavedViews } from '../composables/useSavedViews.js'
 import { filterFromQuery, filterToQuery, hasFilterParams, isDefaultFilter, stripFilterKeys } from '../lib/filters.js'
-import RecoveryQueueTable from '../components/RecoveryQueueTable.vue'
+import TaskQueueTable from '../components/TaskQueueTable.vue'
 import SavedViewsBar from '../components/SavedViewsBar.vue'
 
 const route = useRoute()
@@ -32,7 +32,7 @@ onMounted(() => {
   try {
     const saved = JSON.parse(localStorage.getItem(LAST_FILTER_KEY) || 'null')
     if (saved && Object.keys(saved).length) {
-      router.replace({ path: '/delivery', query: { ...route.query, ...saved } })
+      router.replace({ path: '/tasks', query: { ...route.query, ...saved } })
     }
   } catch {
     // ignore — private browsing / blocked storage
@@ -54,7 +54,7 @@ watch(
 
 function updateFilter(patch) {
   router.replace({
-    path: '/delivery',
+    path: '/tasks',
     query: {
       ...stripFilterKeys(route.query),
       ...filterToQuery({ ...filter.value, ...patch })
@@ -64,12 +64,12 @@ function updateFilter(patch) {
 
 function applyView(view) {
   if (view.projectId) selectedProjectId.value = view.projectId
-  router.push({ path: '/delivery', query: { ...view.query } })
+  router.push({ path: '/tasks', query: { ...view.query } })
 }
 
 function saveCurrentView(name) {
   save(name, {
-    tab: 'delivery',
+    tab: 'tasks',
     query: filterToQuery(filter.value),
     projectId: selectedProjectId.value
   })
@@ -79,6 +79,12 @@ function saveCurrentView(name) {
 <template>
   <section>
     <SavedViewsBar :views="views" @apply="applyView" @save="saveCurrentView" @remove="remove" />
-    <RecoveryQueueTable :rows="tableRows" :all-rows="rows" :filter="filter" @update:filter="updateFilter" />
+    <TaskQueueTable
+      :rows="tableRows"
+      :all-rows="rows"
+      :filter="filter"
+      :show-production="selectedProjectId === 'all'"
+      @update:filter="updateFilter"
+    />
   </section>
 </template>

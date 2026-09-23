@@ -114,8 +114,11 @@ h1{margin:0;font-size:20px;letter-spacing:-.04em}
 .mini i{display:block;height:100%;background:var(--red)}
 
 .dept{display:flex;flex-direction:column;gap:12px}
-.deptRow{display:grid;grid-template-columns:120px 1fr 70px;align-items:center;gap:9px}
-.deptName{font-size:9px;color:var(--muted);font-weight:750}
+.deptRow{display:grid;grid-template-columns:120px 1fr 70px;align-items:center;gap:9px;border-radius:8px}
+.deptRow.highlighted{background:var(--purple2)}
+.deptName{font-size:9px;color:var(--muted);font-weight:750;display:flex;align-items:center;gap:6px}
+.shotStatusBadge{font-size:6px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;color:#fff;background:var(--purple);border-radius:4px;padding:2px 5px;white-space:nowrap}
+tr.highlighted td{background:var(--purple2)}
 .track{height:9px;background:var(--bg);border-radius:9px;overflow:hidden}
 .fill{height:100%;background:var(--blue);border-radius:9px}
 .deptNum{font:800 9px ui-monospace,monospace;text-align:right;color:var(--muted)}

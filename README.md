@@ -3,12 +3,12 @@
 A studio-wide "Delivery Command Center" for Kitsu: a **Shots overview** (one
 representative task per shot — studio-configurable — driving overdue/not
 started/due today/delivered/retake/weekly quota at the shot level), a **Task
-overview** with the same numbers at the raw task level, department pipeline,
-a task status matrix, and a searchable, filterable delivery queue — all
+overview** with the same numbers at the raw task level, task type pipeline,
+a task status matrix, and a searchable, filterable task queue — all
 computed live from your Kitsu data.
 
-Every KPI, donut slice, bar, artist and department cell is a **drill-through**:
-click it and the Delivery Queue tab opens pre-filtered to exactly those tasks.
+Every KPI, donut slice, bar, artist and task-type cell is a **drill-through**:
+click it and the Task Queue tab opens pre-filtered to exactly those tasks.
 Any filter combination can be **saved as a named view** and clicking a row in
 the queue **opens that shot directly in Kitsu**.
 
@@ -44,16 +44,16 @@ tasks' statuses. This plugin lets a studio say **which** task type that is
   quota, and the "Shot status" donut. A shot with no task of the configured
   type yet is treated as "not started".
 - **Task overview** (further down) — the same shape of numbers, but over
-  *every* task on every shot, unfiltered by department. Unaffected by the
+  *every* task on every shot, unfiltered by task type. Unaffected by the
   Settings choice.
 - **Delivered** and **Retake**, for the Shots overview, can each be overridden
   with an explicit list of task statuses (e.g. if your studio's "Approved"
   status should count as delivered but doesn't have Kitsu's `is_done` flag
   set). Leave both empty to fall back to Kitsu's own `is_done`/`is_retake`
   flags (with a name-contains-"retake" fallback).
-- Clicking a Shots-overview number opens the Delivery Queue filtered to
+- Clicking a Shots-overview number opens the Task Queue filtered to
   exactly the tasks behind it (due-date bucket **and** the configured
-  department, when one is set).
+  task type, when one is set).
 
 ## Studio-wide settings — the plugin's one backend piece
 
@@ -82,13 +82,15 @@ table:
 ## Interactive features
 
 - **Drill-through everywhere.** KPI cards, the status/quota donuts, the
-  delivery-load bars, overdue-severity buckets, artist bars, department rows
-  and status-matrix cells all navigate to the Delivery Queue tab filtered to
+  delivery-load bars, overdue-severity buckets, artist bars, task-type rows
+  and status-matrix cells all navigate to the Task Queue tab filtered to
   exactly what you clicked (`lib/filters.js` + `composables/useDrillThrough.js`).
-- **Filterable Delivery Queue.** Search text, due-date bucket (overdue / today
-  / tomorrow / this week / any / an exact date), status, department and
-  artist — any combination, encoded in the route's hash query
-  (`lib/filters.js`).
+- **Filterable Task Queue.** Search text, due-date bucket (any / overdue / today
+  / tomorrow / this week / an exact date), status, task type and
+  artist — any combination, encoded in the route's hash query (`lib/filters.js`).
+  The queue's resting state is "any due date" — Overdue is a filter choice
+  like any other, not a hidden default, so "Clear all" genuinely clears
+  everything and picking Overdue always shows as its own removable chip.
 - **Saved views**, per browser: name the current filter + production and it
   reappears as a chip you can reapply later (`composables/useSavedViews.js`).
 - **Click a queue row → opens that shot directly in Kitsu** in a new tab
@@ -100,13 +102,13 @@ app in an `<iframe>`, so the browser's address bar always shows Kitsu's own
 fixed plugin URL (e.g. `.../plugins/delivery_dashboard`) — it never reflects
 this app's internal hash route, no matter how the filter changes. Three real
 mechanisms exist instead:
-- **Copy link** button (Delivery Queue) copies the iframe's own
+- **Copy link** button (Task Queue) copies the iframe's own
   `window.location.href` — paste it into a **new browser tab** (not Kitsu's
   address bar) and it reopens that exact filter, same-origin cookie auth and
   all.
 - **Saved views** (above) — a named filter + production, restorable with one
   click, entirely within the embedded session.
-- **Last-filter memory** — the Delivery Queue remembers your last filter in
+- **Last-filter memory** — the Task Queue remembers your last filter in
   `localStorage` and restores it the next time you land there with no filter
   in the URL, which is what actually makes it "survive a reload" (a real
   browser refresh reloads the iframe at its bare `src`, with no hash at all).
@@ -220,15 +222,15 @@ frontend/
       useDashboardData.js  fetch + normalize all productions into task + shot rows
       useSettings.js       studio-wide settings: load/save, reactive singleton
       useMetrics.js        reactive metric bundle (task-level AND shot-level)
-      useDrillThrough.js   navigate to the Delivery Queue with a filter patch
+      useDrillThrough.js   navigate to the Task Queue with a filter patch
       useSavedViews.js     localStorage CRUD for named saved views
     lib/
       format.js            date math + status classification (unit-tested)
       metrics.js            KPI / bucket / pivot / queue / shot-row computations (unit-tested)
-      filters.js            Delivery Queue filter <-> route query <-> chips (unit-tested)
+      filters.js            Task Queue filter <-> route query <-> chips (unit-tested)
       kitsuLinks.js          deep links into Kitsu's own shot pages
     components/             DonutCard, BarChartCard, SeverityCard, SavedViewsBar, …
-    views/                  OverviewView, ProductionView, DeliveryView, SettingsView
+    views/                  OverviewView, ProductionView, TaskQueueView, SettingsView
 ```
 
 ## Notes / possible follow-ups

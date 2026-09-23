@@ -80,7 +80,7 @@ function onShotQuotaSegment(segment) {
 
     <div class="sectionHead">
       <b>Task overview</b>
-      <span>every shot task, across all departments</span>
+      <span>every shot task, across all task types</span>
     </div>
     <div class="card" style="margin-bottom:12px">
       <div class="kpis" style="margin-bottom:0">

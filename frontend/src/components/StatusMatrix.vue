@@ -1,6 +1,7 @@
 <script setup>
 defineProps({
-  matrix: { type: Object, required: true } // from metrics.statusMatrix()
+  matrix: { type: Object, required: true }, // from metrics.statusMatrix()
+  highlight: { type: String, default: null } // task-type name configured as the shot-status type, if any
 })
 const emit = defineEmits(['select'])
 </script>
@@ -9,13 +10,13 @@ const emit = defineEmits(['select'])
   <div class="card">
     <div class="head">
       <div class="title">Project status matrix</div>
-      <div class="hint">tasks by department &amp; status · click a cell to open it · {{ matrix.grandTotal }} total</div>
+      <div class="hint">tasks by task type &amp; status · click a cell to open it · {{ matrix.grandTotal }} total</div>
     </div>
     <div class="tableWrap" style="max-height:none">
       <table>
         <thead>
           <tr>
-            <th>Department</th>
+            <th>Task type</th>
             <th
               v-for="c in matrix.classes"
               :key="c.key"
@@ -26,8 +27,11 @@ const emit = defineEmits(['select'])
           </tr>
         </thead>
         <tbody>
-          <tr v-for="type in matrix.types" :key="type">
-            <td class="clickable" @click="matrix.rowTotals[type] > 0 && emit('select', { dept: type, due: 'all' })">{{ type }}</td>
+          <tr v-for="type in matrix.types" :key="type" :class="{ highlighted: type === highlight }">
+            <td class="clickable" @click="matrix.rowTotals[type] > 0 && emit('select', { dept: type, due: 'all' })">
+              {{ type }}
+              <span v-if="type === highlight" class="shotStatusBadge" title="This is the shot-status task type set in Settings">shot status</span>
+            </td>
             <td
               v-for="c in matrix.classes"
               :key="c.key"

@@ -5,12 +5,13 @@ import { openShot } from '../lib/kitsuLinks.js'
 
 const props = defineProps({
   rows: { type: Array, default: () => [] }, // filtered + mapped display rows (metrics.queueRows)
-  allRows: { type: Array, default: () => [] }, // unfiltered task rows, for building dept/artist option lists
-  filter: { type: Object, required: true }
+  allRows: { type: Array, default: () => [] }, // unfiltered task rows, for building task-type/artist option lists
+  filter: { type: Object, required: true },
+  showProduction: { type: Boolean, default: true } // hide the column when only one production is in view
 })
 const emit = defineEmits(['update:filter'])
 
-const deptOptions = computed(() => [...new Set(props.allRows.map((r) => r.taskTypeName))].sort())
+const typeOptions = computed(() => [...new Set(props.allRows.map((r) => r.taskTypeName))].sort())
 
 const artistOptions = computed(() => {
   const names = new Set()
@@ -31,6 +32,7 @@ const dueSelectOptions = computed(() => {
 
 const chips = computed(() => describeFilter(props.filter))
 const showClearAll = computed(() => !isDefaultFilter(props.filter))
+const colCount = computed(() => (props.showProduction ? 7 : 6))
 
 function patch(p) {
   emit('update:filter', p)
@@ -44,14 +46,14 @@ function clearAll() {
 <template>
   <div class="card">
     <div class="head">
-      <div class="title">Delivery queue</div>
+      <div class="title">Task queue</div>
       <div class="hint">{{ rows.length }} matching tasks · click a row to open the shot in Kitsu</div>
     </div>
 
     <div class="controls">
       <input
         class="search"
-        placeholder="Search shot, artist, department…"
+        placeholder="Search shot, artist, task type…"
         :value="filter.q"
         @input="patch({ q: $event.target.value })"
       >
@@ -62,8 +64,8 @@ function clearAll() {
         <option v-for="o in STATUS_OPTIONS" :key="o.value" :value="o.value">{{ o.label }}</option>
       </select>
       <select class="select" :value="filter.dept" @change="patch({ dept: $event.target.value })">
-        <option value="all">All departments</option>
-        <option v-for="d in deptOptions" :key="d" :value="d">{{ d }}</option>
+        <option value="all">All task types</option>
+        <option v-for="t in typeOptions" :key="t" :value="t">{{ t }}</option>
       </select>
       <select class="select" :value="filter.artist" @change="patch({ artist: $event.target.value })">
         <option value="all">All artists</option>
@@ -84,11 +86,11 @@ function clearAll() {
       <table>
         <thead>
           <tr>
-            <th>Shot</th><th>Production</th><th>Dept</th><th>Artist</th><th>Status</th><th>Due</th><th class="num">Days late</th>
+            <th>Shot</th><th v-if="showProduction">Production</th><th>Task type</th><th>Artist</th><th>Status</th><th>Due</th><th class="num">Days late</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-if="!rows.length"><td colspan="7" class="empty">No tasks match this filter.</td></tr>
+          <tr v-if="!rows.length"><td :colspan="colCount" class="empty">No tasks match this filter.</td></tr>
           <tr
             v-for="(r, i) in rows"
             :key="i"
@@ -97,7 +99,7 @@ function clearAll() {
             @click="openShot(r.projectId, r.shotId)"
           >
             <td class="mono">{{ r.shot }}</td>
-            <td>{{ r.projectName }}</td>
+            <td v-if="showProduction">{{ r.projectName }}</td>
             <td>{{ r.dept }}</td>
             <td>{{ r.artist }}</td>
             <td><span class="pill" :class="r.klass">{{ r.status }}</span></td>

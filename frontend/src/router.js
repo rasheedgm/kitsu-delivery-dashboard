@@ -1,13 +1,13 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import OverviewView from './views/OverviewView.vue'
 import ProductionView from './views/ProductionView.vue'
-import DeliveryView from './views/DeliveryView.vue'
+import TaskQueueView from './views/TaskQueueView.vue'
 import SettingsView from './views/SettingsView.vue'
 
 const routes = [
   { path: '/', name: 'overview', component: OverviewView },
   { path: '/production', name: 'production', component: ProductionView },
-  { path: '/delivery', name: 'delivery', component: DeliveryView },
+  { path: '/tasks', name: 'tasks', component: TaskQueueView },
   { path: '/settings', name: 'settings', component: SettingsView }
 ]
 

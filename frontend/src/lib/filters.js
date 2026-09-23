@@ -1,15 +1,20 @@
-// Delivery Queue filter: a small plain object that round-trips through the
-// route's hash-query (shareable/bookmarkable link) and through localStorage
-// (saved views). Keep every value a plain string so both work unmodified.
+// Task Queue filter: a small plain object that round-trips through the
+// route's hash-query and through localStorage (saved views, last-used).
+// Keep every value a plain string so both work unmodified.
+//
+// `due` defaults to 'all' ("any due date") deliberately: "Overdue" is itself
+// a filter choice, not the queue's resting state. That way "Clear all"
+// genuinely means "show everything", and picking Overdue always shows up as
+// its own removable chip instead of being an invisible, coincidental default.
 
 import { CLASS, CLASS_LABEL } from './format.js'
 
 export const DEFAULT_FILTER = Object.freeze({
   q: '',
   status: 'all', // 'all' | CLASS.*
-  dept: 'all', // 'all' | task type name
+  dept: 'all', // 'all' | task type name (Kitsu calls this a "task type", not a department)
   artist: 'all', // 'all' | assignee name
-  due: 'overdue', // 'all' | 'overdue' | 'today' | 'tomorrow' | 'week' | 'YYYY-MM-DD'
+  due: 'all', // 'all' | 'overdue' | 'today' | 'tomorrow' | 'week' | 'YYYY-MM-DD'
   severity: 'all' // 'all' | '0-7' | '8-14' | '15+'
 })
 
@@ -98,7 +103,7 @@ export const STATUS_OPTIONS = [
 ]
 
 // Route query minus this module's own keys — used when navigating to the
-// Delivery Queue with a brand-new filter, so a stale filter left over from a
+// Task Queue with a brand-new filter, so a stale filter left over from a
 // previous visit doesn't leak into it (unrelated params like dark_theme do).
 export function stripFilterKeys(query = {}) {
   const out = { ...query }
@@ -107,9 +112,9 @@ export function stripFilterKeys(query = {}) {
 }
 
 export const DUE_OPTIONS = [
+  { value: 'all', label: 'Any due date' },
   { value: 'overdue', label: 'Overdue' },
   { value: 'today', label: 'Due today' },
   { value: 'tomorrow', label: 'Due tomorrow' },
-  { value: 'week', label: 'Due this week' },
-  { value: 'all', label: 'Any due date' }
+  { value: 'week', label: 'Due this week' }
 ]

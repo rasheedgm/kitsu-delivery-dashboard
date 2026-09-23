@@ -2,7 +2,8 @@
 import { computed } from 'vue'
 
 const props = defineProps({
-  departments: { type: Array, default: () => [] } // [{ name, required, inProgress, done, notStarted, pct }]
+  departments: { type: Array, default: () => [] }, // [{ name, required, inProgress, done, notStarted, pct }]
+  highlight: { type: String, default: null } // task-type name configured as the shot-status type, if any
 })
 
 const totals = computed(() =>
@@ -21,7 +22,7 @@ const emit = defineEmits(['select'])
 <template>
   <div class="card">
     <div class="head">
-      <div class="title">Department pipeline</div>
+      <div class="title">Task type pipeline</div>
       <div class="hint">% of tasks in progress</div>
     </div>
     <div class="dept">
@@ -29,9 +30,13 @@ const emit = defineEmits(['select'])
         v-for="d in departments"
         :key="d.name"
         class="deptRow clickable"
+        :class="{ highlighted: d.name === highlight }"
         @click="emit('select', { dept: d.name, due: 'all' })"
       >
-        <div class="deptName">{{ d.name }}</div>
+        <div class="deptName">
+          {{ d.name }}
+          <span v-if="d.name === highlight" class="shotStatusBadge" title="This is the shot-status task type set in Settings">shot status</span>
+        </div>
         <div class="track"><div class="fill" :style="{ width: d.pct + '%' }"></div></div>
         <div class="deptNum">{{ d.inProgress }} / {{ d.required }}</div>
       </div>

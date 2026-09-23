@@ -176,11 +176,12 @@ export function statusMatrix(rows) {
   }
 }
 
-// General, filterable task list — backs the Delivery Queue view and every
-// drill-through click (KPI card, donut slice, bar, artist, department cell…).
-// `filter` matches the shape in lib/filters.js; any field can be omitted.
+// General, filterable task list — backs the Task Queue view and every
+// drill-through click (KPI card, donut slice, bar, artist, task-type cell…).
+// `filter` matches the shape in lib/filters.js; any field can be omitted —
+// omitted fields default to "no filter" (due: 'all'), matching DEFAULT_FILTER.
 export function queueRows(rows, filter = {}, today = new Date()) {
-  const f = { status: 'all', dept: 'all', artist: 'all', due: 'overdue', severity: 'all', q: '', ...filter }
+  const f = { status: 'all', dept: 'all', artist: 'all', due: 'all', severity: 'all', q: '', ...filter }
   const t0 = startOfDay(today)
   const tomorrow = addDays(t0, 1)
   const week = isoWeekRange(today)

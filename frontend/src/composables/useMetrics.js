@@ -63,7 +63,7 @@ export function useMetrics() {
   )
 
   // Not a computed itself (it takes an argument) — callers wrap it in their
-  // own computed keyed on the filter they're using (see DeliveryView.vue).
+  // own computed keyed on the filter they're using (see TaskQueueView.vue).
   function queueRows(filter) {
     return m.queueRows(rows.value, filter, today)
   }
