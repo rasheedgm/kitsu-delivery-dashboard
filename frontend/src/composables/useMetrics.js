@@ -14,6 +14,7 @@ export function useMetrics() {
 
   const statusSegments = computed(() =>
     m.statusBreakdown(rows.value).map((s) => ({
+      key: s.key,
       label: s.label,
       count: s.count,
       color: CLASS_COLOR[s.key]
@@ -22,8 +23,8 @@ export function useMetrics() {
 
   const quota = computed(() => m.weeklyQuota(rows.value, today))
   const quotaSegments = computed(() => [
-    { label: 'Delivered this week', count: quota.value.done, color: 'var(--purple)' },
-    { label: 'Remaining', count: quota.value.remaining, color: 'var(--line)' }
+    { key: 'done', label: 'Delivered this week', count: quota.value.done, color: 'var(--purple)' },
+    { key: 'remaining', label: 'Remaining', count: quota.value.remaining, color: 'var(--line)' }
   ])
 
   const deliveryLoad = computed(() => m.deliveryLoad(rows.value, today))
@@ -33,6 +34,12 @@ export function useMetrics() {
   const departments = computed(() => m.departments(rows.value))
   const statusMatrix = computed(() => m.statusMatrix(rows.value))
   const overdueQueue = computed(() => m.overdueQueue(rows.value, today))
+
+  // Not a computed itself (it takes an argument) — callers wrap it in their
+  // own computed keyed on the filter they're using (see DeliveryView.vue).
+  function queueRows(filter) {
+    return m.queueRows(rows.value, filter, today)
+  }
 
   return {
     rows,
@@ -47,6 +54,7 @@ export function useMetrics() {
     artistPressure,
     departments,
     statusMatrix,
-    overdueQueue
+    overdueQueue,
+    queueRows
   }
 }

@@ -8,6 +8,7 @@ import {
   departments,
   statusMatrix,
   overdueQueue,
+  queueRows,
   deadline
 } from './metrics.js'
 
@@ -143,6 +144,52 @@ describe('overdueQueue', () => {
     const q = overdueQueue(rows, TODAY)
     expect(q[0].daysLate).toBe(20)
     expect(q[1].daysLate).toBe(4)
+  })
+})
+
+describe('queueRows', () => {
+  const rows = [
+    row({ shotName: 'A_0010', taskTypeName: 'Compositing', assigneeNames: ['Anees'], klass: CLASS.WIP, dueDate: d(2026, 8, 20) }), // overdue, 20d
+    row({ shotName: 'A_0020', taskTypeName: 'Rotoscopy', assigneeNames: ['Syamlu'], klass: CLASS.NOT_STARTED, dueDate: d(2026, 9, 9) }), // due today
+    row({ shotName: 'A_0030', taskTypeName: 'Compositing', assigneeNames: [], klass: CLASS.DONE, dueDate: d(2026, 9, 1) }), // done, not overdue
+    row({ shotName: 'A_0040', taskTypeName: 'Compositing', assigneeNames: ['Anees'], klass: CLASS.WIP, dueDate: d(2026, 9, 20) }) // future
+  ]
+
+  it('defaults to overdue, sorted by days late descending', () => {
+    const q = queueRows(rows, {}, TODAY)
+    expect(q.map((r) => r.shot)).toEqual(['A_0010'])
+  })
+
+  it('filters by status regardless of due date when due is "all"', () => {
+    const q = queueRows(rows, { due: 'all', status: CLASS.DONE }, TODAY)
+    expect(q.map((r) => r.shot)).toEqual(['A_0030'])
+  })
+
+  it('filters by department', () => {
+    const q = queueRows(rows, { due: 'all', dept: 'Rotoscopy' }, TODAY)
+    expect(q.map((r) => r.shot)).toEqual(['A_0020'])
+  })
+
+  it('filters by artist, falling back to "Unassigned"', () => {
+    const q = queueRows(rows, { due: 'all', artist: 'Anees' }, TODAY)
+    expect(q.map((r) => r.shot).sort()).toEqual(['A_0010', 'A_0040'])
+    const unassigned = queueRows(rows, { due: 'all', artist: 'Unassigned' }, TODAY)
+    expect(unassigned.map((r) => r.shot)).toEqual(['A_0030'])
+  })
+
+  it('filters "today" and an exact ISO date the same way', () => {
+    expect(queueRows(rows, { due: 'today' }, TODAY).map((r) => r.shot)).toEqual(['A_0020'])
+    expect(queueRows(rows, { due: '2026-09-09' }, TODAY).map((r) => r.shot)).toEqual(['A_0020'])
+  })
+
+  it('matches free-text search across shot, dept and artist', () => {
+    const q = queueRows(rows, { due: 'all', q: 'compositing' }, TODAY)
+    expect(q.map((r) => r.shot).sort()).toEqual(['A_0010', 'A_0030', 'A_0040'])
+  })
+
+  it('sorts a non-overdue view by due date ascending', () => {
+    const q = queueRows(rows, { due: 'all' }, TODAY)
+    expect(q.map((r) => r.shot)).toEqual(['A_0010', 'A_0030', 'A_0020', 'A_0040'])
   })
 })
 

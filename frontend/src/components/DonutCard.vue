@@ -6,9 +6,11 @@ const props = defineProps({
   hint: String,
   centerValue: [String, Number],
   centerLabel: String,
-  segments: { type: Array, default: () => [] }, // [{ label, count, color }]
-  note: String
+  segments: { type: Array, default: () => [] }, // [{ key, label, count, color }]
+  note: String,
+  clickable: { type: Boolean, default: false }
 })
+const emit = defineEmits(['select'])
 
 const total = computed(() => props.segments.reduce((sum, s) => sum + s.count, 0))
 
@@ -44,7 +46,13 @@ const gradient = computed(() => {
         </div>
       </div>
       <div class="legend">
-        <div v-for="s in segments" :key="s.label" class="leg">
+        <div
+          v-for="s in segments"
+          :key="s.label"
+          class="leg"
+          :class="{ clickable: clickable && s.count > 0 && s.key != null }"
+          @click="clickable && s.count > 0 && s.key != null && emit('select', s)"
+        >
           <span><i class="swatch" :style="{ background: s.color }"></i>{{ s.label }}</span>
           <b>{{ s.count }}</b>
         </div>

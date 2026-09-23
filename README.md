@@ -2,8 +2,13 @@
 
 A studio-wide "Delivery Command Center" for Kitsu: overdue deliveries, weekly
 quota, delivery load, overdue severity, today's handoffs, per-artist pressure,
-department pipeline, a task status matrix and a searchable overdue recovery
+department pipeline, a task status matrix and a searchable, filterable delivery
 queue — all computed live from your Kitsu data.
+
+Every KPI, donut slice, bar, artist and department cell is a **drill-through**:
+click it and the Delivery Queue tab opens pre-filtered to exactly those tasks.
+Any filter combination can be **saved as a named view** and clicking a row in
+the queue **opens that shot directly in Kitsu**.
 
 Rebuilt from `reference.html` (a static Excel snapshot) into a plugin that reads
 the Kitsu API instead of a spreadsheet.
@@ -22,6 +27,40 @@ the Kitsu API instead of a spreadsheet.
   productions, with an in-UI production filter to narrow to one show.
 - Auth is automatic: the plugin runs same-origin inside the Kitsu iframe, so
   Zou's JWT cookie is sent with every request.
+
+## Interactive features
+
+- **Drill-through everywhere.** KPI cards, the status/quota donuts, the
+  delivery-load bars, overdue-severity buckets, artist bars, department rows
+  and status-matrix cells all navigate to the Delivery Queue tab filtered to
+  exactly what you clicked (`lib/filters.js` + `composables/useDrillThrough.js`).
+- **Filterable Delivery Queue.** Search text, due-date bucket (overdue / today
+  / tomorrow / this week / any / an exact date), status, department and
+  artist — any combination, encoded in the URL's hash query so it's
+  shareable/bookmarkable and survives a reload.
+- **Saved views**, per browser: name the current filter + production and it
+  reappears as a chip you can reapply later (`composables/useSavedViews.js`).
+- **Click a queue row → opens that shot directly in Kitsu** in a new tab
+  (`lib/kitsuLinks.js`); same for a "Today's handoffs" row.
+- The production filter is remembered per browser across reloads.
+
+### Kitsu has no plugin-settings framework — how this plugin handles that
+
+Checked directly against Zou's plugin system (`zou/app/utils/plugins.py`):
+`PluginManifest` persists only `id, name, description, version, maintainer,
+website, license, frontend_project_enabled, frontend_studio_enabled, icon` —
+no settings schema, no admin-UI slot, no per-plugin key/value store. Anything
+configurable has to be built by the plugin itself:
+
+- **Per-user preferences** (saved views, remembered production) live in
+  `localStorage` — free, no backend, but not shared across a studio's machines.
+- **Studio-wide shared settings** (e.g. custom quota targets, which task types
+  count toward a department) would need the plugin to stop being frontend-only:
+  add `models.py` + `resources.py` + an Alembic migration, `zou
+  migrate-plugin-db`, and an admin-only write endpoint. Not implemented yet —
+  the current status/overdue/quota rules are derived entirely from Kitsu's own
+  task-status flags (`is_done`/`is_retake`/`is_default`), so there's nothing to
+  configure until a studio needs to override that logic.
 
 ### Data sources (core Kitsu endpoints)
 
@@ -112,10 +151,14 @@ frontend/
     composables/
       useDashboardData.js  fetch + normalize all productions into task rows
       useMetrics.js        reactive metric bundle bound to the production filter
+      useDrillThrough.js   navigate to the Delivery Queue with a filter patch
+      useSavedViews.js     localStorage CRUD for named saved views
     lib/
       format.js            date math + status classification (unit-tested)
-      metrics.js            all KPI / bucket / pivot computations (unit-tested)
-    components/             DonutCard, BarChartCard, SeverityCard, …
+      metrics.js            all KPI / bucket / pivot / queue computations (unit-tested)
+      filters.js            Delivery Queue filter <-> route query <-> chips (unit-tested)
+      kitsuLinks.js          deep links into Kitsu's own shot pages
+    components/             DonutCard, BarChartCard, SeverityCard, SavedViewsBar, …
     views/                  OverviewView, ProductionView, DeliveryView
 ```
 
@@ -127,3 +170,7 @@ frontend/
   per-production fan-out fetch.
 - Assets/edits are out of scope — the dashboard is shot-focused, like the
   original reference.
+- Shared, studio-wide settings (quota targets, custom risk thresholds) need a
+  small plugin backend — see "Kitsu has no plugin-settings framework" above.
+- Saved views are per-browser only; a "shared team view" would need the same
+  backend as above.

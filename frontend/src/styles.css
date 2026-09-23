@@ -133,6 +133,45 @@ td.num,th.num{text-align:right}
 .note{font-size:7px;color:var(--muted);margin-top:7px;line-height:1.4}
 .footer{text-align:center;color:var(--muted);font-size:8px;margin-top:17px}
 
+/* Drill-through affordances */
+.clickable{cursor:pointer}
+.kpi.clickable{transition:box-shadow .12s,border-color .12s}
+.kpi.clickable:hover{border-color:var(--blue);box-shadow:0 4px 14px rgba(20,35,45,.08)}
+.leg.clickable:hover span:first-child{text-decoration:underline}
+.barCol.clickable{cursor:pointer;border-radius:6px}
+.barCol.clickable:hover{background:var(--bg)}
+.deptRow.clickable:hover .deptName{color:var(--ink);text-decoration:underline}
+.artist.clickable{transition:border-color .12s}
+.artist.clickable:hover{border-color:var(--blue)}
+.sevRow.clickable,.severity>.clickable{cursor:pointer}
+.severity .sevGroup.clickable:hover .sevRow b{text-decoration:underline}
+td.clickable:hover{text-decoration:underline;cursor:pointer}
+.action.clickable{cursor:pointer}
+.action.clickable:hover{border-color:var(--blue)}
+tr.clickable{cursor:pointer}
+
+/* Filter chips (active Delivery Queue filters) */
+.chipRow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:10px}
+.chipRow .chipLabel{font-size:8px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.05em;margin-right:2px}
+.chip{display:inline-flex;align-items:center;gap:6px;background:var(--blue2);border:1px solid var(--line);color:var(--blue);border-radius:999px;padding:5px 10px;font-size:9px;font-weight:800}
+.chip button{border:0;background:none;color:inherit;opacity:.7;cursor:pointer;font-size:12px;line-height:1;padding:0}
+.chip button:hover{opacity:1}
+.chipClear{border:1px solid var(--line);background:var(--card);color:var(--muted);border-radius:999px;padding:5px 10px;font-size:9px;font-weight:800;cursor:pointer}
+.chipClear:hover{color:var(--red);border-color:#f0cfcc}
+
+/* Saved views */
+.viewsBar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:10px}
+.viewChip{display:inline-flex;align-items:center;gap:7px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:5px 10px 5px 12px;font-size:9px;font-weight:700;cursor:pointer}
+.viewChip:hover{border-color:var(--blue)}
+.viewChip .x{color:var(--muted);cursor:pointer;font-size:11px;line-height:1}
+.viewChip .x:hover{color:var(--red)}
+.saveViewBtn{border:1px dashed var(--line);background:none;border-radius:999px;padding:5px 12px;font-size:9px;font-weight:800;color:var(--muted);cursor:pointer}
+.saveViewBtn:hover{border-color:var(--blue);color:var(--blue)}
+.saveViewBtn.ghost{border-style:solid}
+.saveViewForm{display:flex;align-items:center;gap:6px}
+.saveViewInput{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 12px;font-size:9px;outline:none;min-width:140px}
+.saveViewInput:focus{border-color:var(--blue)}
+
 @media(max-width:1050px){
  .grid2,.grid3{grid-template-columns:1fr}
  .kpis{grid-template-columns:repeat(3,1fr)}

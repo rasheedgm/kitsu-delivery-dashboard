@@ -15,6 +15,7 @@ const totals = computed(() =>
     { required: 0, inProgress: 0, done: 0 }
   )
 )
+const emit = defineEmits(['select'])
 </script>
 
 <template>
@@ -24,7 +25,12 @@ const totals = computed(() =>
       <div class="hint">% of tasks in progress</div>
     </div>
     <div class="dept">
-      <div v-for="d in departments" :key="d.name" class="deptRow">
+      <div
+        v-for="d in departments"
+        :key="d.name"
+        class="deptRow clickable"
+        @click="emit('select', { dept: d.name, due: 'all' })"
+      >
         <div class="deptName">{{ d.name }}</div>
         <div class="track"><div class="fill" :style="{ width: d.pct + '%' }"></div></div>
         <div class="deptNum">{{ d.inProgress }} / {{ d.required }}</div>

@@ -1,9 +1,11 @@
 <script setup>
 import { computed } from 'vue'
+import { isoKey } from '../lib/format.js'
 
 const props = defineProps({
-  buckets: { type: Array, default: () => [] } // [{ label, count, done, isToday }]
+  buckets: { type: Array, default: () => [] } // [{ date, label, count, done, isToday }]
 })
+const emit = defineEmits(['select'])
 
 const max = computed(() => Math.max(1, ...props.buckets.map((b) => b.count)))
 </script>
@@ -15,7 +17,13 @@ const max = computed(() => Math.max(1, ...props.buckets.map((b) => b.count)))
       <div class="hint">today + next 6 days</div>
     </div>
     <div class="barChart">
-      <div v-for="b in buckets" :key="b.label" class="barCol">
+      <div
+        v-for="b in buckets"
+        :key="b.label"
+        class="barCol"
+        :class="{ clickable: b.count > 0 }"
+        @click="b.count > 0 && emit('select', { due: isoKey(b.date) })"
+      >
         <div class="barVal">{{ b.count }}</div>
         <div class="barArea">
           <div

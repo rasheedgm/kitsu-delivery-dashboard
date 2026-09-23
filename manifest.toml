@@ -1,9 +1,9 @@
 id = "delivery_dashboard"
 name = "Delivery Dashboard"
-version = "0.1.0"
-description = "Live delivery command center: overdue deliveries, weekly quota, department pipeline, handoffs and an overdue recovery queue, built from the studio's Kitsu data."
+version = "0.2.0"
+description = "Live delivery command center: overdue deliveries, weekly quota, department pipeline, handoffs, click-through drill-downs, saved views and an overdue recovery queue, built from the studio's Kitsu data."
 maintainer = "gm.abdul <gm.abdul@gmail.com>"
-website = "https://github.com/gm-abdul/kitsu-delivery-dashboard"
+website = "https://github.com/rasheedgm/kitsu-delivery-dashboard"
 license = "AGPL-3.0-only"
 
 # Studio-wide sidebar entry (no production context). The dashboard aggregates

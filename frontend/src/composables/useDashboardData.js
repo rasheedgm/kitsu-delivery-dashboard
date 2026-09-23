@@ -1,4 +1,4 @@
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import {
   checkLogin,
   getOpenProductions,
@@ -23,7 +23,27 @@ const state = reactive({
   shotCount: 0
 })
 
-const selectedProjectId = ref('all')
+// Remember the last production filter per browser — a small, free "settings"
+// win that doesn't need any backend (see README's Kitsu-plugin-settings note).
+const LAST_PROJECT_KEY = 'kitsu-delivery-dashboard:lastProjectId'
+
+function restoreProjectId() {
+  try {
+    return localStorage.getItem(LAST_PROJECT_KEY) || 'all'
+  } catch {
+    return 'all'
+  }
+}
+
+const selectedProjectId = ref(restoreProjectId())
+
+watch(selectedProjectId, (id) => {
+  try {
+    localStorage.setItem(LAST_PROJECT_KEY, id)
+  } catch {
+    // ignore — private browsing / blocked storage
+  }
+})
 
 function personName(person) {
   const full = [person.first_name, person.last_name].filter(Boolean).join(' ').trim()
@@ -105,6 +125,12 @@ async function load() {
     state.rows = rows
     state.shotCount = shotCount
     state.loaded = true
+
+    // A remembered production that no longer exists (deleted/closed since the
+    // last visit) shouldn't leave the dashboard silently empty.
+    if (selectedProjectId.value !== 'all' && !state.projects.some((p) => p.id === selectedProjectId.value)) {
+      selectedProjectId.value = 'all'
+    }
   } catch (err) {
     state.error = err?.message || String(err)
   } finally {

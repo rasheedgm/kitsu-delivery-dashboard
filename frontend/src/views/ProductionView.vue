@@ -1,11 +1,14 @@
 <script setup>
 import { computed } from 'vue'
 import { useMetrics } from '../composables/useMetrics.js'
+import { useDrillThrough } from '../composables/useDrillThrough.js'
+import { CLASS } from '../lib/format.js'
 import DonutCard from '../components/DonutCard.vue'
 import DepartmentPipeline from '../components/DepartmentPipeline.vue'
 import StatusMatrix from '../components/StatusMatrix.vue'
 
 const { departments, statusMatrix, rows } = useMetrics()
+const { goToQueue } = useDrillThrough()
 
 const executionSegments = computed(() => {
   const t = departments.value.reduce(
@@ -17,9 +20,9 @@ const executionSegments = computed(() => {
     { inProgress: 0, done: 0, notStarted: 0 }
   )
   return [
-    { label: 'In progress', count: t.inProgress, color: 'var(--blue)' },
-    { label: 'Not started', count: t.notStarted, color: 'var(--slate)' },
-    { label: 'Delivered', count: t.done, color: 'var(--green)' }
+    { key: null, label: 'In progress', count: t.inProgress, color: 'var(--blue)' },
+    { key: CLASS.NOT_STARTED, label: 'Not started', count: t.notStarted, color: 'var(--slate)' },
+    { key: CLASS.DONE, label: 'Delivered', count: t.done, color: 'var(--green)' }
   ]
 })
 
@@ -35,10 +38,12 @@ const inProgressTotal = computed(() => executionSegments.value[0].count)
         :center-value="inProgressTotal + '/' + rows.length"
         center-label="in progress"
         :segments="executionSegments"
+        clickable
         note="Required = every shot task of that department. In progress = anything not at a todo or done status."
+        @select="(s) => goToQueue({ status: s.key, due: 'all' })"
       />
-      <DepartmentPipeline :departments="departments" />
+      <DepartmentPipeline :departments="departments" @select="goToQueue" />
     </div>
-    <StatusMatrix :matrix="statusMatrix" />
+    <StatusMatrix :matrix="statusMatrix" @select="goToQueue" />
   </section>
 </template>

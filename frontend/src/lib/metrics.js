@@ -78,9 +78,9 @@ export function deliveryLoad(rows, today = new Date(), days = 7) {
 export function overdueSeverity(rows, today = new Date()) {
   const overdue = rows.filter((r) => isOverdue(r, today))
   const defs = [
-    { label: '15+ days', min: 15, max: Infinity },
-    { label: '8–14 days', min: 8, max: 14 },
-    { label: '0–7 days', min: 0, max: 7 }
+    { key: '15+', label: '15+ days', min: 15, max: Infinity },
+    { key: '8-14', label: '8–14 days', min: 8, max: 14 },
+    { key: '0-7', label: '0–7 days', min: 0, max: 7 }
   ]
   const total = overdue.length || 1
   return defs.map((def) => {
@@ -88,7 +88,7 @@ export function overdueSeverity(rows, today = new Date()) {
       const late = -daysBetween(today, r.dueDate)
       return late >= def.min && late <= def.max
     }).length
-    return { label: def.label, count, pct: Math.round((count / total) * 100) }
+    return { key: def.key, label: def.label, count, pct: Math.round((count / total) * 100) }
   })
 }
 
@@ -121,6 +121,8 @@ export function handoffs(rows, today = new Date()) {
     rows
       .filter((r) => isSameDay(r.dueDate, day) && r.klass !== CLASS.DONE)
       .map((r) => ({
+        projectId: r.projectId,
+        shotId: r.shotId,
         shot: r.shotName,
         dept: r.taskTypeName,
         artist: r.assigneeNames[0] || 'Unassigned',
@@ -174,19 +176,87 @@ export function statusMatrix(rows) {
   }
 }
 
+// General, filterable task list — backs the Delivery Queue view and every
+// drill-through click (KPI card, donut slice, bar, artist, department cell…).
+// `filter` matches the shape in lib/filters.js; any field can be omitted.
+export function queueRows(rows, filter = {}, today = new Date()) {
+  const f = { status: 'all', dept: 'all', artist: 'all', due: 'overdue', severity: 'all', q: '', ...filter }
+  const t0 = startOfDay(today)
+  const tomorrow = addDays(t0, 1)
+  const week = isoWeekRange(today)
+  const q = (f.q || '').toLowerCase().trim()
+
+  function matchesDue(r) {
+    switch (f.due) {
+      case 'all':
+        return true
+      case 'overdue':
+        return isOverdue(r, today)
+      case 'today':
+        return isSameDay(r.dueDate, t0)
+      case 'tomorrow':
+        return isSameDay(r.dueDate, tomorrow)
+      case 'week':
+        return !!r.dueDate && r.dueDate >= week.start && r.dueDate < week.end
+      default:
+        // an exact ISO date string, e.g. from clicking a delivery-load bar
+        return !!r.dueDate && isoKey(r.dueDate) === f.due
+    }
+  }
+
+  function matchesSeverity(r) {
+    if (f.severity === 'all') return true
+    if (!isOverdue(r, today)) return false
+    const late = -daysBetween(today, r.dueDate)
+    const [lo, hi] = f.severity === '15+' ? [15, Infinity] : f.severity === '8-14' ? [8, 14] : [0, 7]
+    return late >= lo && late <= hi
+  }
+
+  function matches(r) {
+    if (f.status !== 'all' && r.klass !== f.status) return false
+    if (f.dept !== 'all' && r.taskTypeName !== f.dept) return false
+    if (f.artist !== 'all') {
+      const names = r.assigneeNames.length ? r.assigneeNames : ['Unassigned']
+      if (!names.includes(f.artist)) return false
+    }
+    if (!matchesDue(r)) return false
+    if (!matchesSeverity(r)) return false
+    if (q) {
+      const haystack = `${r.shotName} ${r.taskTypeName} ${r.assigneeNames.join(' ')} ${r.statusName} ${r.projectName}`.toLowerCase()
+      if (!haystack.includes(q)) return false
+    }
+    return true
+  }
+
+  const mapped = rows.filter(matches).map((r) => ({
+    projectId: r.projectId,
+    projectName: r.projectName,
+    shotId: r.shotId,
+    shot: r.shotName,
+    dept: r.taskTypeName,
+    artist: r.assigneeNames[0] || 'Unassigned',
+    klass: r.klass,
+    status: r.statusName,
+    due: r.dueDate ? isoKey(r.dueDate) : '—',
+    dueTime: r.dueDate ? r.dueDate.getTime() : null,
+    daysLate: r.dueDate ? -daysBetween(today, r.dueDate) : null
+  }))
+
+  if (f.due === 'overdue') {
+    mapped.sort((a, b) => b.daysLate - a.daysLate)
+  } else {
+    mapped.sort((a, b) => {
+      const at = a.dueTime ?? Infinity
+      const bt = b.dueTime ?? Infinity
+      return at - bt || a.shot.localeCompare(b.shot)
+    })
+  }
+  return mapped
+}
+
+// Backward-compatible shorthand used by the Overview tab's severity callout.
 export function overdueQueue(rows, today = new Date()) {
-  return rows
-    .filter((r) => isOverdue(r, today))
-    .map((r) => ({
-      shot: r.shotName,
-      dept: r.taskTypeName,
-      artist: r.assigneeNames[0] || 'Unassigned',
-      klass: r.klass,
-      status: r.statusName,
-      due: r.dueDate ? isoKey(r.dueDate) : '—',
-      daysLate: -daysBetween(today, r.dueDate)
-    }))
-    .sort((a, b) => b.daysLate - a.daysLate)
+  return queueRows(rows, { due: 'overdue' }, today)
 }
 
 // Nearest future delivery target across the given projects (uses project

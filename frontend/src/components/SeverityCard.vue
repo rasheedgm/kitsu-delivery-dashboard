@@ -2,11 +2,12 @@
 import { computed } from 'vue'
 
 const props = defineProps({
-  buckets: { type: Array, default: () => [] } // [{ label, count, pct }]
+  buckets: { type: Array, default: () => [] } // [{ key, label, count, pct }]
 })
+const emit = defineEmits(['select'])
 
 const total = computed(() => props.buckets.reduce((s, b) => s + b.count, 0))
-const critical = computed(() => props.buckets.find((b) => b.label.startsWith('15'))?.count || 0)
+const critical = computed(() => props.buckets.find((b) => b.key === '15+')?.count || 0)
 </script>
 
 <template>
@@ -17,7 +18,11 @@ const critical = computed(() => props.buckets.find((b) => b.label.startsWith('15
     </div>
     <div class="severity">
       <template v-for="b in buckets" :key="b.label">
-        <div class="sevRow">
+        <div
+          class="sevRow"
+          :class="{ clickable: b.count > 0 }"
+          @click="b.count > 0 && emit('select', { due: 'overdue', severity: b.key })"
+        >
           <div><b>{{ b.label }}</b><span>{{ b.count }} tasks</span></div>
           <strong>{{ b.pct }}%</strong>
         </div>
