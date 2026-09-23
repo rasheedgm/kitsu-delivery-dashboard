@@ -57,6 +57,7 @@ h1{margin:0;font-size:20px;letter-spacing:-.04em}
 .tabs{display:flex;gap:6px;margin:0 0 12px;flex-wrap:wrap}
 .tab{border:1px solid var(--line);background:var(--card);color:var(--muted);padding:7px 11px;border-radius:7px;font-size:8px;font-weight:800;cursor:pointer;text-transform:uppercase;letter-spacing:.04em}
 .tab.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.tabBadge{display:inline-block;margin-left:6px;background:var(--amber);color:#fff;border-radius:999px;padding:1px 5px;font-size:7px}
 
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
 .grid3{display:grid;grid-template-columns:1.15fr .85fr;gap:12px;margin-bottom:12px}
@@ -229,22 +230,38 @@ tr.clickable{cursor:pointer}
 .schedCard.draggable:active{cursor:grabbing}
 .schedThumbImg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
 .schedThumbFallback{position:absolute;inset:0;display:grid;place-items:center;font-size:14px;font-weight:800;color:var(--muted);background:var(--line)}
-.schedStatusBadge{position:absolute;top:4px;right:4px;font-size:6px;padding:2px 5px;box-shadow:0 1px 2px rgba(0,0,0,.25)}
-.schedCaption{position:absolute;left:0;right:0;bottom:0;padding:10px 6px 4px;font:800 8px ui-monospace,SFMono-Regular,Menlo,monospace;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:linear-gradient(transparent,rgba(10,16,20,.82))}
+/* Solid-fill status badge — a pastel pill (fine on a white card) disappears
+   against an arbitrary thumbnail image, so this gets its own colors instead
+   of reusing the shared pastel .pill classes. */
+.schedStatusBadge{position:absolute;top:4px;right:4px;font-size:6px;font-weight:900;text-transform:uppercase;border-radius:4px;white-space:nowrap;padding:2px 6px;box-shadow:0 1px 3px rgba(0,0,0,.35);color:#fff;background:var(--slate)}
+.schedStatusBadge.wip{background:var(--amber)}
+.schedStatusBadge.not_started{background:var(--slate)}
+.schedStatusBadge.retake{background:var(--blue)}
+.schedStatusBadge.done{background:var(--green)}
+.schedCaption{position:absolute;left:0;right:0;bottom:0;padding:12px 6px 4px;color:#fff;background:linear-gradient(transparent,rgba(10,16,20,.85))}
+.schedCaptionShot{display:block;font:800 8px ui-monospace,SFMono-Regular,Menlo,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.schedCaptionType{display:block;font-size:7px;color:#c8d2d6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
 .schedCard.ghost{cursor:pointer;opacity:.4;filter:grayscale(.6)}
 .schedCard.ghost .schedCaption{font-weight:700}
+.schedCard.unsaved{box-shadow:0 0 0 2px var(--amber),0 1px 3px rgba(20,35,45,.12)}
+.schedUnsavedDot{position:absolute;top:5px;left:5px;width:7px;height:7px;border-radius:50%;background:var(--amber);box-shadow:0 0 0 2px rgba(255,255,255,.8)}
+.schedUnsavedDot.static{position:static;display:inline-block;box-shadow:none;margin-right:5px}
+.schedSaveBar{display:flex;align-items:center;gap:8px;margin-left:auto;background:var(--amber2);border:1px solid #eeddb7;border-radius:999px;padding:6px 8px 6px 12px}
+.schedUnsavedLabel{display:flex;align-items:center;font-size:9px;font-weight:800;color:#7a5a12}
 
 /* "+" add-to-cell / add-person pickers */
 .schedPicker{position:relative;display:inline-block}
 .schedAddBtn{width:100%;border:1px dashed var(--line);background:none;color:var(--muted);border-radius:6px;padding:4px;font-size:10px;font-weight:800;cursor:pointer;line-height:1}
 .schedHead .schedAddBtn{width:auto;padding:7px 11px;border-radius:7px;font-size:8px;text-transform:uppercase;letter-spacing:.04em}
 .schedAddBtn:hover{border-color:var(--blue);color:var(--blue)}
-.schedPopover{position:absolute;top:calc(100% + 4px);z-index:10;width:220px;background:var(--card);border:1px solid var(--line);border-radius:9px;box-shadow:0 8px 24px rgba(20,35,45,.18);padding:8px;left:0}
-.schedPopover.align-right{left:auto;right:0}
+/* Fixed + teleported to <body> (see SchedulePicker.vue) so it floats above
+   the schedule board's own scroll container instead of being clipped by it;
+   top/left/width come from the trigger's bounding rect via inline style. */
+.schedPopover{position:fixed;z-index:1000;background:var(--card);border:1px solid var(--line);border-radius:9px;box-shadow:0 8px 24px rgba(20,35,45,.22);padding:8px}
 .schedPopoverInput{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:6px 8px;font-size:9px;outline:none;margin-bottom:6px}
 .schedPopoverInput:focus{border-color:var(--blue)}
-.schedPopoverList{max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:2px}
-.schedPopoverItem{text-align:left;border:0;background:none;padding:6px 7px;border-radius:6px;font-size:9px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.schedPopoverList{max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:2px}
+.schedPopoverItem{text-align:left;border:0;background:none;padding:6px 7px;border-radius:6px;font-size:9px;line-height:1.4;cursor:pointer;white-space:normal;word-break:break-word}
 .schedPopoverItem:hover{background:var(--bg)}
 .schedPopoverEmpty{font-size:9px;color:var(--muted);padding:6px 7px}
 

@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useDashboardData } from './useDashboardData.js'
 import { updateTask } from '../api/kitsu.js'
 import { isoKey } from '../lib/format.js'
@@ -10,7 +10,8 @@ import { UNASSIGNED_ID, buildScheduleGrid, computeMovePatch, dropAffectsOtherAss
 // fact. admin/manager: anything. supervisor: due_date only (not assignees,
 // and only within their own department, which we don't attempt to replicate
 // client-side — a supervisor dragging a card across a department boundary
-// still gets a server-side rejection + revert). Everyone else: read-only.
+// still gets a server-side rejection when Save is pressed). Everyone else:
+// read-only.
 const CAN_EDIT_DUE_DATE = new Set(['admin', 'manager', 'supervisor'])
 const CAN_EDIT_ASSIGNEES = new Set(['admin', 'manager'])
 
@@ -24,6 +25,14 @@ function isDemoMode() {
 // Module-level so it survives navigating away from /schedule and back.
 const pinnedPersons = ref([])
 
+// Dragging/scheduling a task only moves it on the board — nothing is written
+// to Kitsu until Save. Keyed by taskId: `original` is what to restore on
+// Discard, `next` is what Save sends (always the task's *current* full
+// position, so moving the same card twice before saving just updates where
+// it ends up, it doesn't queue two writes). Module-level so unsaved moves
+// survive navigating away from /schedule and back, same as pinned rows.
+const pending = reactive(new Map())
+
 export function useSchedule() {
   const { state, filteredRows, applyTaskPatch } = useDashboardData()
 
@@ -32,6 +41,8 @@ export function useSchedule() {
 
   const canEditDueDate = computed(() => CAN_EDIT_DUE_DATE.has(state.role))
   const canEditAssignees = computed(() => CAN_EDIT_ASSIGNEES.has(state.role))
+  const pendingCount = computed(() => pending.size)
+  const saving = ref(false)
 
   function goPrevWeek() {
     start.value = shiftWeek(start.value, -1)
@@ -52,10 +63,15 @@ export function useSchedule() {
     pinnedPersons.value = pinnedPersons.value.filter((p) => p.id !== id)
   }
 
+  function isPending(taskId) {
+    return pending.has(taskId)
+  }
+
   // Returns { ok, error, confirmNeeded }. `confirmNeeded` means the caller
   // must re-call with `confirmed: true` — this drop would silently drop a
   // co-assignee and the UI should ask first (skipped for a plain reorder).
-  async function moveTask(task, fromPersonId, toPersonId, toDateKey, { confirmed = false } = {}) {
+  // Stages the move locally only — see `save()` for the actual Kitsu write.
+  function moveTask(task, fromPersonId, toPersonId, toDateKey, { confirmed = false } = {}) {
     const rowChanged = fromPersonId !== toPersonId
     if (rowChanged && !canEditAssignees.value) {
       return { ok: false, error: "Only admins and managers can reassign tasks — you can still move it to a different day on this person's row." }
@@ -70,21 +86,24 @@ export function useSchedule() {
     const patch = computeMovePatch(task, fromPersonId, toPersonId, toDateKey)
     if (!patch) return { ok: true } // dropped back where it started
 
-    const previousPatch = {}
-    if ('due_date' in patch) previousPatch.due_date = task.dueDate ? isoKey(task.dueDate) : null
-    if ('assignees' in patch) previousPatch.assignees = [...task.assignees]
-
-    applyTaskPatch(task.taskId, patch) // optimistic
-
-    if (isDemoMode()) return { ok: true } // nothing to write to — the local mutation is the whole story
-
-    try {
-      await updateTask(task.taskId, patch)
-      return { ok: true }
-    } catch (err) {
-      applyTaskPatch(task.taskId, previousPatch) // revert
-      return { ok: false, error: err?.message || String(err) }
+    if (!pending.has(task.taskId)) {
+      pending.set(task.taskId, {
+        taskId: task.taskId,
+        original: {
+          due_date: task.dueDate ? isoKey(task.dueDate) : null,
+          assignees: [...task.assignees]
+        }
+      })
     }
+
+    applyTaskPatch(task.taskId, patch) // local only — no network call here
+
+    pending.get(task.taskId).next = {
+      due_date: task.dueDate ? isoKey(task.dueDate) : null,
+      assignees: [...task.assignees]
+    }
+
+    return { ok: true }
   }
 
   // "Add to this cell" from the picker instead of a drag: same underlying
@@ -99,6 +118,43 @@ export function useSchedule() {
     return moveTask(task, fromPersonId, toPersonId, toDateKey, opts)
   }
 
+  function discardAll() {
+    for (const entry of pending.values()) applyTaskPatch(entry.taskId, entry.original)
+    pending.clear()
+  }
+
+  function discardOne(taskId) {
+    const entry = pending.get(taskId)
+    if (!entry) return
+    applyTaskPatch(taskId, entry.original)
+    pending.delete(taskId)
+  }
+
+  // Writes every staged move to Kitsu. Returns a list of failures (empty on
+  // full success); a failed task's revert is NOT automatic here — it stays
+  // pending (still shown as unsaved, on its moved-to cell) so the studio can
+  // just try Save again rather than lose the position and have to redo it.
+  async function save() {
+    if (saving.value || pending.size === 0) return { failures: [] }
+    saving.value = true
+    const failures = []
+    if (isDemoMode()) {
+      pending.clear() // nothing to write to — the local move is the whole story
+      saving.value = false
+      return { failures }
+    }
+    for (const entry of [...pending.values()]) {
+      try {
+        await updateTask(entry.taskId, entry.next)
+        pending.delete(entry.taskId)
+      } catch (err) {
+        failures.push({ taskId: entry.taskId, error: err?.message || String(err) })
+      }
+    }
+    saving.value = false
+    return { failures }
+  }
+
   return {
     weekStart: start,
     grid,
@@ -106,12 +162,18 @@ export function useSchedule() {
     pinnedPersons,
     canEditDueDate,
     canEditAssignees,
+    pendingCount,
+    saving,
+    isPending,
     goPrevWeek,
     goNextWeek,
     goToday,
     pinPerson,
     unpinPerson,
     moveTask,
-    scheduleTask
+    scheduleTask,
+    save,
+    discardAll,
+    discardOne
   }
 }

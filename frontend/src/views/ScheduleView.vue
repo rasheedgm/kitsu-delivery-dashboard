@@ -15,13 +15,18 @@ const {
   pinnedPersons,
   canEditDueDate,
   canEditAssignees,
+  pendingCount,
+  saving,
+  isPending,
   goPrevWeek,
   goNextWeek,
   goToday,
   pinPerson,
   unpinPerson,
   moveTask,
-  scheduleTask
+  scheduleTask,
+  save,
+  discardAll
 } = useSchedule()
 const { state } = useDashboardData()
 
@@ -91,37 +96,36 @@ function cellKey(personId, dateKey) {
   return `${personId}|${dateKey}`
 }
 
-async function applyMove(fn) {
-  const result = await fn()
+function applyMove(result) {
   if (result.confirmNeeded) return result
   if (!result.ok) showError(result.error)
   return result
 }
 
-async function onDrop(toPersonId, toDateKey) {
+function onDrop(toPersonId, toDateKey) {
   dragOverCell.value = null
   const drag = dragging.value
   dragging.value = null
   if (!drag) return
 
-  const result = await applyMove(() => moveTask(drag.task, drag.fromPersonId, toPersonId, toDateKey))
+  const result = applyMove(moveTask(drag.task, drag.fromPersonId, toPersonId, toDateKey))
   if (result.confirmNeeded) {
     pendingDrop.value = { task: drag.task, fromPersonId: drag.fromPersonId, toPersonId, toDateKey, viaPicker: false }
   }
 }
 
-async function onScheduleFromPicker(task, toPersonId, toDateKey) {
-  const result = await applyMove(() => scheduleTask(task, toPersonId, toDateKey))
+function onScheduleFromPicker(task, toPersonId, toDateKey) {
+  const result = applyMove(scheduleTask(task, toPersonId, toDateKey))
   if (result.confirmNeeded) {
     pendingDrop.value = { task, toPersonId, toDateKey, viaPicker: true }
   }
 }
 
-async function confirmPendingDrop() {
+function confirmPendingDrop() {
   const drop = pendingDrop.value
   pendingDrop.value = null
   if (!drop) return
-  await applyMove(() =>
+  applyMove(
     drop.viaPicker
       ? scheduleTask(drop.task, drop.toPersonId, drop.toDateKey, { confirmed: true })
       : moveTask(drop.task, drop.fromPersonId, drop.toPersonId, drop.toDateKey, { confirmed: true })
@@ -130,6 +134,14 @@ async function confirmPendingDrop() {
 
 function cancelPendingDrop() {
   pendingDrop.value = null
+}
+
+// --- save / discard ------------------------------------------------------
+async function onSave() {
+  const { failures } = await save()
+  if (failures.length) {
+    showError(`${failures.length} task${failures.length > 1 ? 's' : ''} couldn't be saved (still shown as unsaved) — ${failures[0].error}`)
+  }
 }
 </script>
 
@@ -153,7 +165,13 @@ function cancelPendingDrop() {
       >
         <template #default="{ item }">{{ item.name }}</template>
       </SchedulePicker>
-      <div class="schedPermNote" v-if="!canEditDueDate">Read-only — you don't have permission to reschedule tasks here.</div>
+
+      <div v-if="pendingCount" class="schedSaveBar">
+        <span class="schedUnsavedLabel"><span class="schedUnsavedDot static"></span>{{ pendingCount }} unsaved move{{ pendingCount > 1 ? 's' : '' }}</span>
+        <button type="button" class="saveViewBtn ghost" :disabled="saving" @click="discardAll">Discard</button>
+        <button type="button" class="saveViewBtn primary" :disabled="saving" @click="onSave">{{ saving ? 'Saving…' : 'Save changes' }}</button>
+      </div>
+      <div class="schedPermNote" v-else-if="!canEditDueDate">Read-only — you don't have permission to reschedule tasks here.</div>
       <div class="schedPermNote" v-else-if="!canEditAssignees">You can move tasks between days, but only admins/managers can reassign them to a different person.</div>
     </div>
 
@@ -207,6 +225,7 @@ function cancelPendingDrop() {
                 :key="entry.task.taskId"
                 :task="entry.task"
                 :ghost="entry.ghost"
+                :unsaved="!entry.ghost && isPending(entry.task.taskId)"
                 :draggable="canEditDueDate"
                 @dragstart="onDragStart(entry.task, row.personId, $event)"
                 @dragend="onDragEnd"

@@ -3,11 +3,13 @@ import { computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useDashboardData } from './composables/useDashboardData.js'
 import { useSettings } from './composables/useSettings.js'
+import { useSchedule } from './composables/useSchedule.js'
 
 const route = useRoute()
 const router = useRouter()
 const { state, load, selectedProjectId, filteredProjects } = useDashboardData()
 const { load: loadSettings } = useSettings()
+const { pendingCount } = useSchedule()
 
 const tabs = [
   { to: '/', label: 'Overview' },
@@ -101,7 +103,7 @@ onBeforeUnmount(() => window.removeEventListener('message', onMessage))
           class="tab"
           :class="{ active: route.path === t.to }"
           @click="router.push({ path: t.to, query: route.query })"
-        >{{ t.label }}</button>
+        >{{ t.label }}<span v-if="t.to === '/schedule' && pendingCount" class="tabBadge">{{ pendingCount }}</span></button>
       </nav>
       <router-view />
       <div class="footer">Studio Dashboard · Kitsu plugin · v0.4.1</div>
