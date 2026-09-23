@@ -20,14 +20,9 @@ const thumbUrl = previewThumbUrl(props.task.previewFileId)
     @dragend="$emit('dragend', $event)"
     @click="$emit('open')"
   >
-    <div class="schedThumb">
-      <img v-if="thumbUrl" :src="thumbUrl" :alt="task.shotName" loading="lazy" @error="$event.target.style.display = 'none'">
-      <span v-else class="schedThumbFallback">{{ (task.shotName || '?').slice(0, 2).toUpperCase() }}</span>
-    </div>
-    <div class="schedCardBody">
-      <div class="schedShot">{{ task.shotName }}</div>
-      <div class="schedType">{{ task.taskTypeName }}</div>
-      <span class="pill schedPill" :class="task.klass">{{ task.statusName }}</span>
-    </div>
+    <img v-if="thumbUrl" class="schedThumbImg" :src="thumbUrl" :alt="task.shotName" loading="lazy" @error="$event.target.style.display = 'none'">
+    <div v-else class="schedThumbFallback">{{ (task.shotName || '?').slice(0, 2).toUpperCase() }}</div>
+    <span class="pill schedStatusBadge" :class="task.klass">{{ task.statusName }}</span>
+    <div class="schedCaption">{{ task.shotName }}</div>
   </div>
 </template>
