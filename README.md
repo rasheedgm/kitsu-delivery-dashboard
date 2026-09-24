@@ -145,8 +145,8 @@ may edit `start_date` too):
   another day to set `start_date` there. The start can't be dragged past the
   due date, and only days in the visible week are reachable.
 - **✎ on a card** (appears on hover) opens a small editor with start and due
-  date pickers, quick spans (1 day / 2 days / 3 days / 1 week before the due
-  date) and a clear-start button — use it for exact dates or anything outside
+  date pickers, quick durations (1 / 2 / 3 days / 1 week of work, counting both
+  the start and due day — so 1 day means start = due) and a clear-start button — use it for exact dates or anything outside
   the visible week.
 - **Moving a card keeps its duration:** dragging a task to a new day shifts
   its start date by the same amount, so the trail doesn't stretch or shrink.

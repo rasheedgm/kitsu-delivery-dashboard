@@ -136,7 +136,7 @@ onBeforeUnmount(() => window.removeEventListener('message', onMessage))
         >{{ t.label }}<span v-if="t.to === '/schedule' && pendingCount" class="tabBadge">{{ pendingCount }}</span></button>
       </nav>
       <router-view />
-      <div class="footer">Studio Dashboard · Kitsu plugin · v0.5.0</div>
+      <div class="footer">Studio Dashboard · Kitsu plugin · v0.5.1</div>
     </template>
   </div>
 </template>

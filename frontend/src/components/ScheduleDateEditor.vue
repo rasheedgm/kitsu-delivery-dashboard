@@ -33,12 +33,13 @@ const changed = computed(() => !!result.value.patch)
 
 const span = computed(() => {
   if (!startVal.value || !dueVal.value) return null
-  return daysBetween(parseDate(startVal.value), parseDate(dueVal.value))
+  // Inclusive: start == due is 1 day of work.
+  return daysBetween(parseDate(startVal.value), parseDate(dueVal.value)) + 1
 })
 
 function setSpan(days) {
   if (!dueVal.value) return
-  startVal.value = isoKey(addDays(parseDate(dueVal.value), -days))
+  startVal.value = isoKey(addDays(parseDate(dueVal.value), -(days - 1)))
 }
 
 function apply() {
@@ -100,7 +101,7 @@ onBeforeUnmount(() => {
       </label>
 
       <div class="schedEditorSpans">
-        <span>Span</span>
+        <span>Days</span>
         <button
           v-for="s in SPANS"
           :key="s.days"
@@ -113,7 +114,7 @@ onBeforeUnmount(() => {
       </div>
 
       <div v-if="error" class="schedEditorError">{{ error }}</div>
-      <div v-else-if="span !== null" class="schedEditorNote">{{ span }} day{{ span === 1 ? '' : 's' }} of work before the due date</div>
+      <div v-else-if="span !== null" class="schedEditorNote">{{ span }} day{{ span === 1 ? '' : 's' }} of work (start and due date both count)</div>
       <div v-else class="schedEditorNote">No start date — no trail is shown.</div>
 
       <div class="schedEditorActions">
