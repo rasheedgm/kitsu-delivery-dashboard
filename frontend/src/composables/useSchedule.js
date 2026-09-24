@@ -2,7 +2,18 @@ import { computed, reactive, ref } from 'vue'
 import { useDashboardData } from './useDashboardData.js'
 import { updateTask } from '../api/kitsu.js'
 import { isoKey } from '../lib/format.js'
-import { UNASSIGNED_ID, buildScheduleGrid, computeMovePatch, dropAffectsOtherAssignees, shiftWeek, weekStart } from '../lib/schedule.js'
+import {
+  START_AFTER_DUE,
+  UNASSIGNED_ID,
+  buildScheduleGrid,
+  computeDatesPatch,
+  computeMovePatch,
+  computeStartPatch,
+  dropAffectsOtherAssignees,
+  shiftWeek,
+  startAfterDue,
+  weekStart
+} from '../lib/schedule.js'
 
 // Kitsu's own permission rules (zou/app/services/user_service.py
 // check_supervisor_task_access) — mirrored here so the board can disable
@@ -14,6 +25,25 @@ import { UNASSIGNED_ID, buildScheduleGrid, computeMovePatch, dropAffectsOtherAss
 // read-only.
 const CAN_EDIT_DUE_DATE = new Set(['admin', 'manager', 'supervisor'])
 const CAN_EDIT_ASSIGNEES = new Set(['admin', 'manager'])
+
+function snapshot(task) {
+  return {
+    due_date: task.dueDate ? isoKey(task.dueDate) : null,
+    start_date: task.startDate ? isoKey(task.startDate) : null,
+    assignees: [...task.assignees]
+  }
+}
+
+// Only the fields that actually changed — an unchanged `assignees` in the
+// payload would get a supervisor's date-only save rejected (they may edit
+// dates, not assignees), and there's no reason to rewrite untouched fields.
+function changedFields(entry) {
+  const out = {}
+  for (const key of Object.keys(entry.next)) {
+    if (JSON.stringify(entry.next[key]) !== JSON.stringify(entry.original[key])) out[key] = entry.next[key]
+  }
+  return out
+}
 
 function isDemoMode() {
   return new URLSearchParams(window.location.search).get('demo') === '1'
@@ -27,10 +57,11 @@ const pinnedPersons = ref([])
 
 // Dragging/scheduling a task only moves it on the board — nothing is written
 // to Kitsu until Save. Keyed by taskId: `original` is what to restore on
-// Discard, `next` is what Save sends (always the task's *current* full
-// position, so moving the same card twice before saving just updates where
-// it ends up, it doesn't queue two writes). Module-level so unsaved moves
-// survive navigating away from /schedule and back, same as pinned rows.
+// Discard, `next` is the task's *current* full position (so moving the same
+// card twice before saving just updates where it ends up, it doesn't queue
+// two writes). Save sends only the fields where the two differ. Module-level
+// so unsaved moves survive navigating away from /schedule and back, same as
+// pinned rows.
 const pending = reactive(new Map())
 
 export function useSchedule() {
@@ -67,6 +98,18 @@ export function useSchedule() {
     return pending.has(taskId)
   }
 
+  // Apply a patch locally and record it as pending. If the task ends up back
+  // where it started, it stops being pending — nothing left to save.
+  function stage(task, patch) {
+    if (!pending.has(task.taskId)) {
+      pending.set(task.taskId, { taskId: task.taskId, original: snapshot(task) })
+    }
+    applyTaskPatch(task.taskId, patch) // local only — no network call here
+    const entry = pending.get(task.taskId)
+    entry.next = snapshot(task)
+    if (Object.keys(changedFields(entry)).length === 0) pending.delete(task.taskId)
+  }
+
   // Returns { ok, error, confirmNeeded }. `confirmNeeded` means the caller
   // must re-call with `confirmed: true` — this drop would silently drop a
   // co-assignee and the UI should ask first (skipped for a plain reorder).
@@ -86,23 +129,27 @@ export function useSchedule() {
     const patch = computeMovePatch(task, fromPersonId, toPersonId, toDateKey)
     if (!patch) return { ok: true } // dropped back where it started
 
-    if (!pending.has(task.taskId)) {
-      pending.set(task.taskId, {
-        taskId: task.taskId,
-        original: {
-          due_date: task.dueDate ? isoKey(task.dueDate) : null,
-          assignees: [...task.assignees]
-        }
-      })
-    }
+    stage(task, patch)
 
-    applyTaskPatch(task.taskId, patch) // local only — no network call here
+    return { ok: true }
+  }
 
-    pending.get(task.taskId).next = {
-      due_date: task.dueDate ? isoKey(task.dueDate) : null,
-      assignees: [...task.assignees]
-    }
+  // Drag a trail's leading edge: change start_date only, on any row (start
+  // isn't per-person, so the row it's dropped on doesn't matter).
+  function moveStart(task, toDateKey) {
+    if (!canEditDueDate.value) return { ok: false, error: 'You do not have permission to reschedule tasks.' }
+    if (startAfterDue(task, toDateKey)) return { ok: false, error: START_AFTER_DUE }
+    const patch = computeStartPatch(task, toDateKey)
+    if (patch) stage(task, patch)
+    return { ok: true }
+  }
 
+  // The date editor: set start and due together (empty start clears it).
+  function setDates(task, startKey, dueKey) {
+    if (!canEditDueDate.value) return { ok: false, error: 'You do not have permission to reschedule tasks.' }
+    const { error, patch } = computeDatesPatch(task, startKey, dueKey)
+    if (error) return { ok: false, error }
+    if (patch) stage(task, patch)
     return { ok: true }
   }
 
@@ -145,7 +192,7 @@ export function useSchedule() {
     }
     for (const entry of [...pending.values()]) {
       try {
-        await updateTask(entry.taskId, entry.next)
+        await updateTask(entry.taskId, changedFields(entry))
         pending.delete(entry.taskId)
       } catch (err) {
         failures.push({ taskId: entry.taskId, error: err?.message || String(err) })
@@ -171,6 +218,8 @@ export function useSchedule() {
     pinPerson,
     unpinPerson,
     moveTask,
+    moveStart,
+    setDates,
     scheduleTask,
     save,
     discardAll,

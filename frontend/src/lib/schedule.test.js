@@ -7,6 +7,9 @@ import {
   isSameWeek,
   buildScheduleGrid,
   computeMovePatch,
+  computeStartPatch,
+  computeDatesPatch,
+  startAfterDue,
   dropAffectsOtherAssignees
 } from './schedule.js'
 
@@ -97,7 +100,7 @@ describe('buildScheduleGrid', () => {
     ]
     const grid = buildScheduleGrid(rows, start)
     const cells = grid.rows[0].cells
-    expect(cells['2026-09-07']).toEqual([{ task: rows[0], ghost: true }])
+    expect(cells['2026-09-07']).toEqual([{ task: rows[0], ghost: true, isStart: true }]) // leading edge
     expect(cells['2026-09-08']).toEqual([{ task: rows[0], ghost: true }])
     expect(cells['2026-09-09']).toEqual([{ task: rows[0], ghost: true }])
     expect(cells['2026-09-10']).toEqual([{ task: rows[0], ghost: false }]) // due date: real card, not a ghost too
@@ -109,8 +112,17 @@ describe('buildScheduleGrid', () => {
     ]
     const grid = buildScheduleGrid(rows, start)
     expect(grid.rows).toHaveLength(1)
-    expect(grid.rows[0].cells['2026-09-12']).toEqual([{ task: rows[0], ghost: true }])
+    expect(grid.rows[0].cells['2026-09-12']).toEqual([{ task: rows[0], ghost: true, isStart: true }])
     expect(grid.rows[0].cells['2026-09-13']).toEqual([{ task: rows[0], ghost: true }])
+  })
+
+  it('marks no ghost as the start handle when start_date is in an earlier week', () => {
+    const rows = [
+      task({ startDate: d(2026, 9, 3), dueDate: d(2026, 9, 10), assignees: ['p1'], assigneeNames: ['Anees'] })
+    ]
+    const cells = buildScheduleGrid(rows, start).rows[0].cells
+    expect(cells['2026-09-07']).toEqual([{ task: rows[0], ghost: true }])
+    expect(Object.values(cells).flat().some((e) => e.isStart)).toBe(false)
   })
 
   it('no ghost trail when start_date is on or after due_date', () => {
@@ -162,6 +174,81 @@ describe('computeMovePatch', () => {
       due_date: '2026-09-11',
       assignees: ['p2']
     })
+  })
+})
+
+describe('computeMovePatch keeps the task duration', () => {
+  it('shifts start_date by the same amount as due_date', () => {
+    const t = task({ startDate: d(2026, 9, 7), dueDate: d(2026, 9, 9), assignees: ['p1'] })
+    expect(computeMovePatch(t, 'p1', 'p1', '2026-09-14')).toEqual({
+      due_date: '2026-09-14',
+      start_date: '2026-09-12'
+    })
+  })
+
+  it('leaves start_date alone when the task has none', () => {
+    const t = task({ dueDate: d(2026, 9, 9), assignees: ['p1'] })
+    expect(computeMovePatch(t, 'p1', 'p1', '2026-09-14')).toEqual({ due_date: '2026-09-14' })
+  })
+
+  it('does not touch start_date on a reassign-only drop', () => {
+    const t = task({ startDate: d(2026, 9, 7), dueDate: d(2026, 9, 9), assignees: ['p1'] })
+    expect(computeMovePatch(t, 'p1', 'p2', '2026-09-09')).toEqual({ assignees: ['p2'] })
+  })
+
+  it('clamps start_date to the new due date when scheduling a task that had no due date', () => {
+    const t = task({ startDate: d(2026, 9, 20), dueDate: null, assignees: ['p1'] })
+    expect(computeMovePatch(t, 'p1', 'p1', '2026-09-10')).toEqual({
+      due_date: '2026-09-10',
+      start_date: '2026-09-10'
+    })
+  })
+})
+
+describe('computeStartPatch', () => {
+  const t = () => task({ startDate: d(2026, 9, 7), dueDate: d(2026, 9, 10) })
+
+  it('sets start_date only', () => {
+    expect(computeStartPatch(t(), '2026-09-08')).toEqual({ start_date: '2026-09-08' })
+  })
+
+  it('is null for the same day', () => {
+    expect(computeStartPatch(t(), '2026-09-07')).toBeNull()
+  })
+
+  it('allows start == due (collapses the trail)', () => {
+    expect(computeStartPatch(t(), '2026-09-10')).toEqual({ start_date: '2026-09-10' })
+  })
+
+  it('is null, and flagged by startAfterDue, when after the due date', () => {
+    expect(computeStartPatch(t(), '2026-09-11')).toBeNull()
+    expect(startAfterDue(t(), '2026-09-11')).toBe(true)
+    expect(startAfterDue(t(), '2026-09-10')).toBe(false)
+  })
+})
+
+describe('computeDatesPatch', () => {
+  const t = () => task({ startDate: d(2026, 9, 7), dueDate: d(2026, 9, 10) })
+
+  it('requires a due date', () => {
+    expect(computeDatesPatch(t(), '2026-09-07', '').error).toBeTruthy()
+  })
+
+  it('rejects a start after the due date', () => {
+    expect(computeDatesPatch(t(), '2026-09-12', '2026-09-10').error).toBeTruthy()
+  })
+
+  it('returns only the changed fields', () => {
+    expect(computeDatesPatch(t(), '2026-09-08', '2026-09-10')).toEqual({ patch: { start_date: '2026-09-08' } })
+    expect(computeDatesPatch(t(), '2026-09-07', '2026-09-12')).toEqual({ patch: { due_date: '2026-09-12' } })
+  })
+
+  it('clears the start date with an empty value', () => {
+    expect(computeDatesPatch(t(), '', '2026-09-10')).toEqual({ patch: { start_date: null } })
+  })
+
+  it('reports no change as a null patch', () => {
+    expect(computeDatesPatch(t(), '2026-09-07', '2026-09-10')).toEqual({ patch: null })
   })
 })
 

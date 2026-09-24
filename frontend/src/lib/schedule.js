@@ -3,7 +3,7 @@
 // through Sunday, of the displayed week. Kept separate from metrics.js since
 // this is a different shape of data (grouped by person+day, not a flat list).
 
-import { addDays, isoKey, isoWeekRange, startOfDay } from './format.js'
+import { addDays, daysBetween, isoKey, isoWeekRange, parseDate, startOfDay } from './format.js'
 
 export const UNASSIGNED_ID = 'unassigned'
 
@@ -75,9 +75,13 @@ export function buildScheduleGrid(rows, start, pinnedPersons = []) {
     const touched = []
     if (dayKeySet.has(dueKey)) touched.push({ key: dueKey, ghost: false })
     if (row.startDate && row.startDate < row.dueDate) {
+      const startKey = isoKey(row.startDate)
       for (const d of days) {
         if (d.key !== dueKey && d.date >= row.startDate && d.date < row.dueDate) {
-          touched.push({ key: d.key, ghost: true })
+          // The ghost sitting on the real start_date day is the trail's
+          // leading edge — the UI makes it a drag handle for the start date.
+          // (When start_date is in an earlier week, no visible ghost is it.)
+          touched.push({ key: d.key, ghost: true, isStart: d.key === startKey })
         }
       }
     }
@@ -89,7 +93,9 @@ export function buildScheduleGrid(rows, start, pinnedPersons = []) {
 
     for (const a of assignees) {
       const person = ensureRow(a.id, a.name)
-      for (const { key, ghost } of touched) person.cells[key].push({ task: row, ghost })
+      for (const { key, ghost, isStart } of touched) {
+        person.cells[key].push(isStart ? { task: row, ghost, isStart: true } : { task: row, ghost })
+      }
     }
   }
 
@@ -110,13 +116,55 @@ export function computeMovePatch(task, fromPersonId, toPersonId, toDateKey) {
   const patch = {}
 
   const currentKey = task.dueDate ? isoKey(task.dueDate) : null
-  if (currentKey !== toDateKey) patch.due_date = toDateKey
+  if (currentKey !== toDateKey) {
+    patch.due_date = toDateKey
+    // Keep the task's duration: the start date travels with the due date, so
+    // moving a card doesn't silently stretch or shrink its ghost trail.
+    if (task.startDate) {
+      if (task.dueDate) {
+        const span = Math.max(0, daysBetween(task.startDate, task.dueDate))
+        patch.start_date = isoKey(addDays(parseDate(toDateKey), -span))
+      } else if (isoKey(task.startDate) > toDateKey) {
+        patch.start_date = toDateKey // no known span; just keep start <= due
+      }
+    }
+  }
 
   if (fromPersonId !== toPersonId) {
     patch.assignees = toPersonId === UNASSIGNED_ID ? [] : [toPersonId]
   }
 
   return Object.keys(patch).length ? patch : null
+}
+
+export const START_AFTER_DUE = "Start date can't be after the due date."
+
+// Dragging a trail's leading edge to `toDateKey` sets start_date only. Null
+// for a no-op, or when it would land after the due date (callers should
+// check `startAfterDue` first to say why).
+export function startAfterDue(task, toDateKey) {
+  return !!task.dueDate && toDateKey > isoKey(task.dueDate)
+}
+
+export function computeStartPatch(task, toDateKey) {
+  if (!task.dueDate || startAfterDue(task, toDateKey)) return null
+  const current = task.startDate ? isoKey(task.startDate) : null
+  return current === toDateKey ? null : { start_date: toDateKey }
+}
+
+// The date editor sets both fields explicitly (either may be unchanged).
+// Returns { error } or { patch } (patch is null when nothing changed).
+// `startKey` may be empty to clear the start date; `dueKey` is required —
+// a task without one has no card on the board.
+export function computeDatesPatch(task, startKey, dueKey) {
+  if (!dueKey) return { error: 'A due date is required.' }
+  if (startKey && startKey > dueKey) return { error: START_AFTER_DUE }
+  const patch = {}
+  if ((task.dueDate ? isoKey(task.dueDate) : null) !== dueKey) patch.due_date = dueKey
+  if ((task.startDate ? isoKey(task.startDate) : null) !== (startKey || null)) {
+    patch.start_date = startKey || null
+  }
+  return { patch: Object.keys(patch).length ? patch : null }
 }
 
 // True when a drop would silently drop a co-assignee (task has >1 assignee

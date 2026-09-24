@@ -202,6 +202,7 @@ function applyTaskPatch(taskId, patch) {
   const row = state.rows.find((r) => r.taskId === taskId)
   if (!row) return
   if ('due_date' in patch) row.dueDate = parseDate(patch.due_date)
+  if ('start_date' in patch) row.startDate = parseDate(patch.start_date)
   if ('assignees' in patch) {
     const personById = indexById(state.persons)
     row.assignees = patch.assignees

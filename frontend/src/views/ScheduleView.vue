@@ -7,6 +7,7 @@ import { isoKey } from '../lib/format.js'
 import { UNASSIGNED_ID } from '../lib/schedule.js'
 import ScheduleCard from '../components/ScheduleCard.vue'
 import SchedulePicker from '../components/SchedulePicker.vue'
+import ScheduleDateEditor from '../components/ScheduleDateEditor.vue'
 
 const {
   weekStart,
@@ -24,6 +25,8 @@ const {
   pinPerson,
   unpinPerson,
   moveTask,
+  moveStart,
+  setDates,
   scheduleTask,
   save,
   discardAll
@@ -69,7 +72,7 @@ function taskSearchKey(t) {
 }
 
 // --- drag + drop-picker shared state -----------------------------------
-const dragging = ref(null) // { task, fromPersonId }
+const dragging = ref(null) // { task, fromPersonId, kind: 'move' | 'start' }
 const dragOverCell = ref(null) // 'personId|dateKey'
 const pendingDrop = ref(null) // { task, fromPersonId, toPersonId, toDateKey } awaiting confirmation
 const errorMessage = ref(null)
@@ -81,8 +84,10 @@ function showError(message) {
   errorTimer = setTimeout(() => { errorMessage.value = null }, 6000)
 }
 
-function onDragStart(task, fromPersonId, event) {
-  dragging.value = { task, fromPersonId }
+// kind 'start' = a ghost trail's leading edge was grabbed: the drop sets
+// start_date, not due_date/assignee.
+function onDragStart(task, fromPersonId, event, kind = 'move') {
+  dragging.value = { task, fromPersonId, kind }
   event.dataTransfer.effectAllowed = 'move'
   event.dataTransfer.setData('text/plain', task.taskId) // Firefox needs *something* set
 }
@@ -107,6 +112,11 @@ function onDrop(toPersonId, toDateKey) {
   const drag = dragging.value
   dragging.value = null
   if (!drag) return
+
+  if (drag.kind === 'start') {
+    applyMove(moveStart(drag.task, toDateKey))
+    return
+  }
 
   const result = applyMove(moveTask(drag.task, drag.fromPersonId, toPersonId, toDateKey))
   if (result.confirmNeeded) {
@@ -134,6 +144,20 @@ function confirmPendingDrop() {
 
 function cancelPendingDrop() {
   pendingDrop.value = null
+}
+
+// --- date editor ---------------------------------------------------------
+const editing = ref(null) // { task, rect }
+
+function openEditor(task, event) {
+  const rect = event.currentTarget.getBoundingClientRect()
+  editing.value = { task, rect: { top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right } }
+}
+
+function applyEditor(startKey, dueKey) {
+  const task = editing.value?.task
+  editing.value = null
+  if (task) applyMove(setDates(task, startKey, dueKey))
 }
 
 // --- save / discard ------------------------------------------------------
@@ -167,7 +191,7 @@ async function onSave() {
       </SchedulePicker>
 
       <div v-if="pendingCount" class="schedSaveBar">
-        <span class="schedUnsavedLabel"><span class="schedUnsavedDot static"></span>{{ pendingCount }} unsaved move{{ pendingCount > 1 ? 's' : '' }}</span>
+        <span class="schedUnsavedLabel"><span class="schedUnsavedDot static"></span>{{ pendingCount }} unsaved change{{ pendingCount > 1 ? 's' : '' }}</span>
         <button type="button" class="saveViewBtn ghost" :disabled="saving" @click="discardAll">Discard</button>
         <button type="button" class="saveViewBtn primary" :disabled="saving" @click="onSave">{{ saving ? 'Saving…' : 'Save changes' }}</button>
       </div>
@@ -225,10 +249,13 @@ async function onSave() {
                 :key="entry.task.taskId"
                 :task="entry.task"
                 :ghost="entry.ghost"
+                :start-handle="!!entry.isStart"
                 :unsaved="!entry.ghost && isPending(entry.task.taskId)"
                 :draggable="canEditDueDate"
-                @dragstart="onDragStart(entry.task, row.personId, $event)"
+                :editable="canEditDueDate"
+                @dragstart="onDragStart(entry.task, row.personId, $event, entry.ghost ? 'start' : 'move')"
                 @dragend="onDragEnd"
+                @edit="openEditor(entry.task, $event)"
                 @open="openShot(entry.task.projectId, entry.task.shotId)"
               />
               <SchedulePicker
@@ -248,5 +275,14 @@ async function onSave() {
         </div>
       </div>
     </div>
+
+    <ScheduleDateEditor
+      v-if="editing"
+      :key="editing.task.taskId"
+      :task="editing.task"
+      :anchor-rect="editing.rect"
+      @apply="applyEditor"
+      @close="editing = null"
+    />
   </section>
 </template>

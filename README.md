@@ -120,19 +120,36 @@ the UI doesn't offer a drag it can't perform:
 
 A supervisor's department restriction isn't replicated client-side — a drag
 outside their department still gets attempted and Kitsu's own 403 triggers a
-revert, same as any other failed move. Moving a task that has more than one
+error on Save (the task stays marked unsaved so you can retry or discard).
+Moving a task that has more than one
 assignee to a different row asks for confirmation first, since the drop
 target becomes its *only* assignee (the other one is silently dropped
 otherwise) — a real, easy-to-hit surprise, not just a hypothetical edge case.
-Every move is optimistic (applies to the board immediately) and reverts
-automatically if the write fails. The same confirm-and-revert path runs
-whether the move came from a drag or the "+" picker below.
+Nothing is written until you press **Save changes**: a drag applies to the
+board immediately but only *stages* the change (amber ring/dot on the card,
+a count on the Schedule tab, and a Save / Discard bar in the header). Save
+sends just the fields that changed per task; Discard puts everything back.
+Dragging a card back to where it started un-stages it. The same confirm path
+runs whether the move came from a drag or the "+" picker below.
 
 **Ghost trail.** If a task has a `start_date` before its `due_date`, a
 dimmed, non-interactive copy of the card fills every day in between (on the
 same person's row) — including days in a week where the due date itself
 isn't visible, so a long-running task still shows wherever its assignee is
 meant to be working on it. The real, draggable card stays on the due date.
+
+**Editing the start date** (same permissions as the due date — supervisors
+may edit `start_date` too):
+- **Drag the trail's leading edge.** The first ghost (on the real start day,
+  marked with a dashed outline and a START tag) is a drag handle: drop it on
+  another day to set `start_date` there. The start can't be dragged past the
+  due date, and only days in the visible week are reachable.
+- **✎ on a card** (appears on hover) opens a small editor with start and due
+  date pickers, quick spans (1 day / 2 days / 3 days / 1 week before the due
+  date) and a clear-start button — use it for exact dates or anything outside
+  the visible week.
+- **Moving a card keeps its duration:** dragging a task to a new day shifts
+  its start date by the same amount, so the trail doesn't stretch or shrink.
 
 **Two ways to add work to a cell that isn't already on the board:**
 - **"+" on a cell** opens a search over every task in the current production
