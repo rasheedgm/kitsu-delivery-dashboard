@@ -119,18 +119,19 @@ the UI doesn't offer a drag it can't perform:
 | everyone else | ❌ (board is read-only) | ❌ |
 
 A supervisor's department restriction isn't replicated client-side — a drag
-outside their department still gets attempted and Kitsu's own 403 triggers a
+outside their department still gets attempted and Kitsu's own 403 comes back as an
 error on Save (the task stays marked unsaved so you can retry or discard).
-Moving a task that has more than one
-assignee to a different row asks for confirmation first, since the drop
-target becomes its *only* assignee (the other one is silently dropped
-otherwise) — a real, easy-to-hit surprise, not just a hypothetical edge case.
+Dragging a task that has several assignees to another row **swaps only the
+row you dragged it from** (drag Anees's copy to Nil and it becomes Nil +
+the other co-assignee; drop it on a co-assignee's row and it just drops the
+source; drop on Unassigned and only that person is removed). The "+" picker
+has no source row, so scheduling a multi-assignee task onto someone new asks
+for confirmation first, since the target becomes its only assignee.
 Nothing is written until you press **Save changes**: a drag applies to the
 board immediately but only *stages* the change (amber ring/dot on the card,
 a count on the Schedule tab, and a Save / Discard bar in the header). Save
 sends just the fields that changed per task; Discard puts everything back.
-Dragging a card back to where it started un-stages it. The same confirm path
-runs whether the move came from a drag or the "+" picker below.
+Dragging a card back to where it started un-stages it.
 
 **Ghost trail.** If a task has a `start_date` before its `due_date`, a
 dimmed, non-interactive copy of the card fills every day in between (on the

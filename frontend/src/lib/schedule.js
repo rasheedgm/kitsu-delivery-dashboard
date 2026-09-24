@@ -47,8 +47,8 @@ function dayLabel(date) {
 // shows wherever its assignee is meant to be working on it that week.
 //
 // A multi-assignee task appears once per assignee — dragging it off one
-// person's row doesn't remove it from a co-assignee's row unless the drag
-// targets that field (see computeMovePatch).
+// person's row swaps only that person, leaving co-assignees (see
+// computeMovePatch).
 export function buildScheduleGrid(rows, start, pinnedPersons = []) {
   const days = weekDays(start).map(dayLabel)
   const dayKeys = days.map((d) => d.key)
@@ -112,7 +112,10 @@ export function buildScheduleGrid(rows, start, pinnedPersons = []) {
 // `toPersonId`/`toDateKey` describe the drop target. Returns a Kitsu task
 // PUT payload with only the fields that actually changed, or null for a
 // no-op drop (same cell).
-export function computeMovePatch(task, fromPersonId, toPersonId, toDateKey) {
+// `replaceAll` (the "+" picker, which has no source row) makes the target the
+// task's only assignee; a drag instead swaps just the row it came from,
+// leaving any co-assignees alone.
+export function computeMovePatch(task, fromPersonId, toPersonId, toDateKey, { replaceAll = false } = {}) {
   const patch = {}
 
   const currentKey = task.dueDate ? isoKey(task.dueDate) : null
@@ -131,10 +134,31 @@ export function computeMovePatch(task, fromPersonId, toPersonId, toDateKey) {
   }
 
   if (fromPersonId !== toPersonId) {
-    patch.assignees = toPersonId === UNASSIGNED_ID ? [] : [toPersonId]
+    const current = task.assignees || []
+    const next = replaceAll ? swapAll(toPersonId) : swapOne(current, fromPersonId, toPersonId)
+    if (JSON.stringify(next) !== JSON.stringify(current)) patch.assignees = next
   }
 
   return Object.keys(patch).length ? patch : null
+}
+
+function swapAll(toPersonId) {
+  return toPersonId === UNASSIGNED_ID ? [] : [toPersonId]
+}
+
+// Replace `from` with `to` in place. If `to` is already assigned, `from` just
+// drops off; dropping on the Unassigned row removes `from`.
+function swapOne(assignees, from, to) {
+  const list = [...assignees]
+  const at = list.indexOf(from)
+  if (to === UNASSIGNED_ID || list.includes(to)) {
+    if (at >= 0) list.splice(at, 1)
+  } else if (at >= 0) {
+    list[at] = to
+  } else {
+    list.push(to)
+  }
+  return list
 }
 
 export const START_AFTER_DUE = "Start date can't be after the due date."
@@ -167,8 +191,8 @@ export function computeDatesPatch(task, startKey, dueKey) {
   return { patch: Object.keys(patch).length ? patch : null }
 }
 
-// True when a drop would silently drop a co-assignee (task has >1 assignee
-// and the row changed) — callers should confirm before applying.
+// True when a replace-all move would silently drop a co-assignee (task has
+// >1 assignee and the row changed) — callers should confirm before applying.
 export function dropAffectsOtherAssignees(task, fromPersonId, toPersonId) {
   return fromPersonId !== toPersonId && (task.assignees || []).length > 1
 }

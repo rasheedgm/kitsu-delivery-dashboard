@@ -177,6 +177,27 @@ describe('computeMovePatch', () => {
   })
 })
 
+describe('computeMovePatch on a multi-assignee task', () => {
+  const t = () => task({ dueDate: d(2026, 9, 9), assignees: ['p1', 'p2'] })
+
+  it('swaps only the row it was dragged from, keeping the co-assignee', () => {
+    expect(computeMovePatch(t(), 'p1', 'p3', '2026-09-09')).toEqual({ assignees: ['p3', 'p2'] })
+    expect(computeMovePatch(t(), 'p2', 'p3', '2026-09-09')).toEqual({ assignees: ['p1', 'p3'] })
+  })
+
+  it('just drops the source when the target is already a co-assignee', () => {
+    expect(computeMovePatch(t(), 'p1', 'p2', '2026-09-09')).toEqual({ assignees: ['p2'] })
+  })
+
+  it('removes only the source when dropped on Unassigned', () => {
+    expect(computeMovePatch(t(), 'p1', UNASSIGNED_ID, '2026-09-09')).toEqual({ assignees: ['p2'] })
+  })
+
+  it('replaceAll makes the target the only assignee', () => {
+    expect(computeMovePatch(t(), 'p1', 'p3', '2026-09-09', { replaceAll: true })).toEqual({ assignees: ['p3'] })
+  })
+})
+
 describe('computeMovePatch keeps the task duration', () => {
   it('shifts start_date by the same amount as due_date', () => {
     const t = task({ startDate: d(2026, 9, 7), dueDate: d(2026, 9, 9), assignees: ['p1'] })

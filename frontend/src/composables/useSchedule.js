@@ -110,11 +110,12 @@ export function useSchedule() {
     if (Object.keys(changedFields(entry)).length === 0) pending.delete(task.taskId)
   }
 
-  // Returns { ok, error, confirmNeeded }. `confirmNeeded` means the caller
-  // must re-call with `confirmed: true` — this drop would silently drop a
-  // co-assignee and the UI should ask first (skipped for a plain reorder).
+  // Returns { ok, error, confirmNeeded }. A drag swaps only the row it came
+  // from, so co-assignees are untouched. `replaceAll` (the picker) makes the
+  // target the only assignee; `confirmNeeded` then means the caller must
+  // re-call with `confirmed: true`, since that would drop a co-assignee.
   // Stages the move locally only — see `save()` for the actual Kitsu write.
-  function moveTask(task, fromPersonId, toPersonId, toDateKey, { confirmed = false } = {}) {
+  function moveTask(task, fromPersonId, toPersonId, toDateKey, { confirmed = false, replaceAll = false } = {}) {
     const rowChanged = fromPersonId !== toPersonId
     if (rowChanged && !canEditAssignees.value) {
       return { ok: false, error: "Only admins and managers can reassign tasks — you can still move it to a different day on this person's row." }
@@ -122,11 +123,11 @@ export function useSchedule() {
     if (!canEditDueDate.value) {
       return { ok: false, error: 'You do not have permission to reschedule tasks.' }
     }
-    if (!confirmed && dropAffectsOtherAssignees(task, fromPersonId, toPersonId)) {
+    if (replaceAll && !confirmed && dropAffectsOtherAssignees(task, fromPersonId, toPersonId)) {
       return { ok: false, confirmNeeded: true }
     }
 
-    const patch = computeMovePatch(task, fromPersonId, toPersonId, toDateKey)
+    const patch = computeMovePatch(task, fromPersonId, toPersonId, toDateKey, { replaceAll })
     if (!patch) return { ok: true } // dropped back where it started
 
     stage(task, patch)
@@ -162,7 +163,7 @@ export function useSchedule() {
     const alreadyOnTarget =
       toPersonId === UNASSIGNED_ID ? task.assignees.length === 0 : task.assignees.includes(toPersonId)
     const fromPersonId = alreadyOnTarget ? toPersonId : task.assignees[0] || UNASSIGNED_ID
-    return moveTask(task, fromPersonId, toPersonId, toDateKey, opts)
+    return moveTask(task, fromPersonId, toPersonId, toDateKey, { ...opts, replaceAll: !alreadyOnTarget })
   }
 
   function discardAll() {

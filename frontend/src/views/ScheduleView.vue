@@ -74,7 +74,7 @@ function taskSearchKey(t) {
 // --- drag + drop-picker shared state -----------------------------------
 const dragging = ref(null) // { task, fromPersonId, kind: 'move' | 'start' }
 const dragOverCell = ref(null) // 'personId|dateKey'
-const pendingDrop = ref(null) // { task, fromPersonId, toPersonId, toDateKey } awaiting confirmation
+const pendingDrop = ref(null) // picker schedule { task, toPersonId, toDateKey } awaiting confirmation
 const errorMessage = ref(null)
 let errorTimer = null
 
@@ -118,16 +118,13 @@ function onDrop(toPersonId, toDateKey) {
     return
   }
 
-  const result = applyMove(moveTask(drag.task, drag.fromPersonId, toPersonId, toDateKey))
-  if (result.confirmNeeded) {
-    pendingDrop.value = { task: drag.task, fromPersonId: drag.fromPersonId, toPersonId, toDateKey, viaPicker: false }
-  }
+  applyMove(moveTask(drag.task, drag.fromPersonId, toPersonId, toDateKey))
 }
 
 function onScheduleFromPicker(task, toPersonId, toDateKey) {
   const result = applyMove(scheduleTask(task, toPersonId, toDateKey))
   if (result.confirmNeeded) {
-    pendingDrop.value = { task, toPersonId, toDateKey, viaPicker: true }
+    pendingDrop.value = { task, toPersonId, toDateKey }
   }
 }
 
@@ -135,11 +132,7 @@ function confirmPendingDrop() {
   const drop = pendingDrop.value
   pendingDrop.value = null
   if (!drop) return
-  applyMove(
-    drop.viaPicker
-      ? scheduleTask(drop.task, drop.toPersonId, drop.toDateKey, { confirmed: true })
-      : moveTask(drop.task, drop.fromPersonId, drop.toPersonId, drop.toDateKey, { confirmed: true })
-  )
+  applyMove(scheduleTask(drop.task, drop.toPersonId, drop.toDateKey, { confirmed: true }))
 }
 
 function cancelPendingDrop() {
@@ -201,8 +194,8 @@ async function onSave() {
 
     <div v-if="pendingDrop" class="schedConfirm">
       <span>
-        <b>{{ pendingDrop.task.shotName }}</b> is assigned to more than one person. Moving it here will
-        reassign it <b>only</b> to this row — the other assignee will be removed. Continue?
+        <b>{{ pendingDrop.task.shotName }}</b> is assigned to more than one person. Scheduling it here will
+        make this person its <b>only</b> assignee — the others will be removed. Continue?
       </span>
       <div class="schedConfirmActions">
         <button type="button" class="saveViewBtn primary" @click="confirmPendingDrop">Move it</button>
