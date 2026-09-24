@@ -60,10 +60,16 @@ function task(overrides = {}) {
 describe('buildScheduleGrid', () => {
   const start = weekStart(WED) // Mon 09-07
 
+  it('always ends with an Unassigned row, even in a week with no tasks', () => {
+    const grid = buildScheduleGrid([], start)
+    expect(grid.rows.map((r) => r.personId)).toEqual([UNASSIGNED_ID])
+    expect(Object.values(grid.rows[0].cells).flat()).toHaveLength(0)
+  })
+
   it('places a task on its assignee row and due-date column as a real (non-ghost) card', () => {
     const rows = [task({ dueDate: d(2026, 9, 9), assignees: ['p1'], assigneeNames: ['Anees'] })]
     const grid = buildScheduleGrid(rows, start)
-    expect(grid.rows).toHaveLength(1)
+    expect(grid.rows.map((r) => r.name)).toEqual(['Anees', 'Unassigned'])
     expect(grid.rows[0].name).toBe('Anees')
     expect(grid.rows[0].cells['2026-09-09']).toEqual([{ task: rows[0], ghost: false }])
     expect(grid.rows[0].cells['2026-09-07']).toHaveLength(0)
@@ -75,7 +81,7 @@ describe('buildScheduleGrid', () => {
       task({ dueDate: d(2026, 9, 20), assignees: ['p1'], assigneeNames: ['Anees'] }) // next week, no start_date
     ]
     const grid = buildScheduleGrid(rows, start)
-    expect(grid.rows).toHaveLength(0)
+    expect(grid.rows.map((r) => r.name)).toEqual(['Unassigned'])
   })
 
   it('puts unassigned tasks on a synthetic Unassigned row, sorted last', () => {
@@ -90,8 +96,8 @@ describe('buildScheduleGrid', () => {
   it('a multi-assignee task appears on every assignee row', () => {
     const rows = [task({ dueDate: d(2026, 9, 9), assignees: ['p1', 'p2'], assigneeNames: ['Anees', 'Diego'] })]
     const grid = buildScheduleGrid(rows, start)
-    expect(grid.rows.map((r) => r.name).sort()).toEqual(['Anees', 'Diego'])
-    for (const row of grid.rows) expect(row.cells['2026-09-09']).toHaveLength(1)
+    expect(grid.rows.map((r) => r.name).sort()).toEqual(['Anees', 'Diego', 'Unassigned'])
+    for (const row of grid.rows.slice(0, 2)) expect(row.cells['2026-09-09']).toHaveLength(1)
   })
 
   it('fills a ghost trail from start_date up to (not including) due_date', () => {
@@ -111,7 +117,7 @@ describe('buildScheduleGrid', () => {
       task({ startDate: d(2026, 9, 12), dueDate: d(2026, 9, 20), assignees: ['p1'], assigneeNames: ['Anees'] })
     ]
     const grid = buildScheduleGrid(rows, start)
-    expect(grid.rows).toHaveLength(1)
+    expect(grid.rows.map((r) => r.name)).toEqual(['Anees', 'Unassigned'])
     expect(grid.rows[0].cells['2026-09-12']).toEqual([{ task: rows[0], ghost: true, isStart: true }])
     expect(grid.rows[0].cells['2026-09-13']).toEqual([{ task: rows[0], ghost: true }])
   })
@@ -134,7 +140,7 @@ describe('buildScheduleGrid', () => {
 
   it('pinned persons get an empty row even with no tasks this week', () => {
     const grid = buildScheduleGrid([], start, [{ id: 'p9', name: 'Priya' }])
-    expect(grid.rows).toHaveLength(1)
+    expect(grid.rows.map((r) => r.name)).toEqual(['Priya', 'Unassigned'])
     expect(grid.rows[0].name).toBe('Priya')
     expect(Object.values(grid.rows[0].cells).flat()).toHaveLength(0)
   })
@@ -142,7 +148,7 @@ describe('buildScheduleGrid', () => {
   it('a pinned person who also has real tasks just gets the one row', () => {
     const rows = [task({ dueDate: d(2026, 9, 9), assignees: ['p1'], assigneeNames: ['Anees'] })]
     const grid = buildScheduleGrid(rows, start, [{ id: 'p1', name: 'Anees' }])
-    expect(grid.rows).toHaveLength(1)
+    expect(grid.rows.map((r) => r.name)).toEqual(['Anees', 'Unassigned'])
     expect(grid.rows[0].cells['2026-09-09']).toHaveLength(1)
   })
 })

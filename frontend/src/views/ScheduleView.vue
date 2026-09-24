@@ -56,6 +56,8 @@ const pinnablePersons = computed(() => {
     .sort((a, b) => a.name.localeCompare(b.name))
 })
 
+const boardIsEmpty = computed(() => grid.value.rows.every((r) => isRowEmpty(r)))
+
 function isRowEmpty(row) {
   return Object.values(row.cells).every((cell) => cell.length === 0)
 }
@@ -205,11 +207,11 @@ async function onSave() {
     <div v-if="errorMessage" class="schedConfirm err">{{ errorMessage }}</div>
 
     <div class="card schedBoardCard">
-      <div v-if="!grid.rows.length" class="empty">
+      <div v-if="boardIsEmpty" class="empty">
         No tasks touch this week for the selected production.
         <template v-if="canEditDueDate"> Use "+ Add person" above to pin someone's row and schedule work onto it.</template>
       </div>
-      <div v-else class="schedBoard">
+      <div class="schedBoard">
         <div class="schedGrid" :style="{ '--sched-cols': grid.days.length }">
           <div class="schedCorner"></div>
           <div v-for="d in grid.days" :key="d.key" class="schedDayHead" :class="{ today: d.isToday }">

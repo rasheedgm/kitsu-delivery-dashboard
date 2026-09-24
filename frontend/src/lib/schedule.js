@@ -35,7 +35,7 @@ function dayLabel(date) {
 }
 
 // Build the board: one row per person with a task touching this week (plus
-// "Unassigned" if any such task has no assignee, and any `pinnedPersons`
+// an always-present "Unassigned" row, last, and any `pinnedPersons`
 // pinned on with zero tasks so there's somewhere to drop a new one), each
 // with one cell per day holding entries for that person that day.
 //
@@ -67,6 +67,8 @@ export function buildScheduleGrid(rows, start, pinnedPersons = []) {
   }
 
   for (const person of pinnedPersons) ensureRow(person.id, person.name)
+  // Always present, even empty: it's the drop target for un-assigning a task.
+  ensureRow(UNASSIGNED_ID, 'Unassigned')
 
   for (const row of rows) {
     if (!row.dueDate) continue
@@ -102,9 +104,7 @@ export function buildScheduleGrid(rows, start, pinnedPersons = []) {
   const people = [...byPerson.values()]
     .filter((r) => r.personId !== UNASSIGNED_ID)
     .sort((a, b) => a.name.localeCompare(b.name))
-  const unassigned = byPerson.get(UNASSIGNED_ID)
-
-  return { days, rows: unassigned ? [...people, unassigned] : people }
+  return { days, rows: [...people, byPerson.get(UNASSIGNED_ID)] }
 }
 
 // What a drop actually changes. `task` is the row being moved, `fromPersonId`

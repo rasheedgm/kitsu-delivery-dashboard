@@ -96,7 +96,9 @@ shot's own cover image (`preview_file_id` — the same thumbnail Kitsu shows on
 the shot's page/grid), and finally to a plain initials tile if neither
 exists. Both render via Kitsu's own
 `/pictures/thumbnails-square/preview-files/<id>.png`. A task with no assignee
-lands on a synthetic "Unassigned" row instead of disappearing; a
+lands on a synthetic "Unassigned" row instead of disappearing — that row is
+always shown (last), even in a week with nothing unassigned, so it's always
+there to drop a card on to un-assign it; a
 multi-assignee task appears on every assignee's row.
 
 The board only makes sense for one production at a time — a person's row
