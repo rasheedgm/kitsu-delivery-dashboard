@@ -100,7 +100,10 @@ export function useSchedule() {
 
   // Apply a patch locally and record it as pending. If the task ends up back
   // where it started, it stops being pending — nothing left to save.
-  function stage(task, patch) {
+  function stage(passedTask, patch) {
+    // Always work on the live row: a refresh may have replaced the objects a
+    // drag/editor captured, and snapshotting a stale one would save wrong data.
+    const task = state.rows.find((r) => r.taskId === passedTask.taskId) || passedTask
     if (!pending.has(task.taskId)) {
       pending.set(task.taskId, { taskId: task.taskId, original: snapshot(task) })
     }
@@ -108,6 +111,24 @@ export function useSchedule() {
     const entry = pending.get(task.taskId)
     entry.next = snapshot(task)
     if (Object.keys(changedFields(entry)).length === 0) pending.delete(task.taskId)
+  }
+
+  // After a refresh replaced the rows with freshly fetched ones, keep the
+  // user's unsaved moves: re-apply each staged position onto the new rows
+  // and re-base "original" on what Kitsu says now. A task that no longer
+  // exists drops out of the pending list.
+  function rebasePending() {
+    for (const entry of [...pending.values()]) {
+      const row = state.rows.find((r) => r.taskId === entry.taskId)
+      if (!row) {
+        pending.delete(entry.taskId)
+        continue
+      }
+      entry.original = snapshot(row)
+      applyTaskPatch(entry.taskId, entry.next)
+      entry.next = snapshot(row)
+      if (Object.keys(changedFields(entry)).length === 0) pending.delete(entry.taskId)
+    }
   }
 
   // Returns { ok, error, confirmNeeded }. A drag swaps only the row it came
@@ -223,6 +244,7 @@ export function useSchedule() {
     setDates,
     scheduleTask,
     save,
+    rebasePending,
     discardAll,
     discardOne
   }

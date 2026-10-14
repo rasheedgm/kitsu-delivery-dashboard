@@ -58,9 +58,16 @@ tasks' statuses. This plugin lets a studio say **which** task type that is
   status should count as delivered but doesn't have Kitsu's `is_done` flag
   set). Leave both empty to fall back to Kitsu's own `is_done`/`is_retake`
   flags (with a name-contains-"retake" fallback).
-- Clicking a Shots-overview number opens the Task Queue filtered to
-  exactly the tasks behind it (due-date bucket **and** the configured
-  task type, when one is set).
+- Clicking a Shots-overview number opens the queue in **shot scope**: one row
+  per shot (its status task, or "No task yet"), so the list is exactly the
+  shots behind the number — including shots that have no task at all and
+  shots counted as delivered/retake through the Settings override, neither
+  of which a plain task filter can show. A removable "Shot status · one row
+  per shot" chip switches it back to the task list.
+- **Ignored task types** (Settings) — tick the task types that are dummy or
+  bookkeeping, not production tracking. Their tasks are left out of every
+  number and list (Task overview, Production, Task queue) and can't be
+  picked as a shot's status task. The Schedule board still shows them.
 
 ## Studio-wide settings — the plugin's one backend piece
 
@@ -72,8 +79,10 @@ studio-wide has to be built by the plugin itself, so this one carries its own
 table:
 
 - `models.py` — one row, `plugin_delivery_dashboard_settings`
-  (`shot_status_task_type_id`, `delivered_status_ids`, `retake_status_ids`).
-  Never touches Zou's own tables.
+  (`shot_status_task_type_id`, `delivered_status_ids`, `retake_status_ids`,
+  `ignored_task_type_ids`). Never touches Zou's own tables. A new setting is
+  a new Alembic revision in `migrations/versions/`; `install-plugin --force`
+  runs it, and existing rows get the column's `[]` default.
 - `resources.py` — `GET /api/plugins/delivery_dashboard/settings` (any
   logged-in user can read it, so everyone's dashboard agrees), `PUT` (admin
   or manager only — `permissions.has_manager_permissions()`).
@@ -85,6 +94,16 @@ table:
 
 **Per-user** preferences (saved views, remembered production) still live in
 `localStorage`, same as before — no reason to put those in the shared table.
+
+## Keeping the data fresh
+
+The dashboard fetches from Kitsu when it opens and does not poll. The
+**↻ button** in the header (next to the settings gear) re-fetches everything
+and the studio settings; the "Updated" stamp is when the data was actually
+fetched. It also refreshes by itself when you return to the tab after more
+than a minute. Unsaved Schedule moves are kept across a refresh (re-applied
+on top of the fresh data). If a refresh fails, the data you already have
+stays on screen with a warning.
 
 ## Schedule board
 

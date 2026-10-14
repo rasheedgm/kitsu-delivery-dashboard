@@ -70,3 +70,23 @@ describe('hasFilterParams', () => {
     expect(hasFilterParams({ q: '' })).toBe(true)
   })
 })
+
+describe('scope', () => {
+  it('defaults to tasks and is omitted from the query', () => {
+    expect(DEFAULT_FILTER.scope).toBe('tasks')
+    expect(filterToQuery(DEFAULT_FILTER)).toEqual({})
+  })
+
+  it('round-trips shots scope and counts as a filter param', () => {
+    const query = filterToQuery({ ...DEFAULT_FILTER, scope: 'shots', status: CLASS.DONE })
+    expect(query).toEqual({ scope: 'shots', status: CLASS.DONE })
+    expect(filterFromQuery(query).scope).toBe('shots')
+    expect(hasFilterParams({ scope: 'shots' })).toBe(true)
+  })
+
+  it('shows a removable chip that switches back to tasks', () => {
+    const chips = describeFilter({ ...DEFAULT_FILTER, scope: 'shots' })
+    expect(chips).toHaveLength(1)
+    expect(chips[0].clear).toEqual({ scope: 'tasks' })
+  })
+})

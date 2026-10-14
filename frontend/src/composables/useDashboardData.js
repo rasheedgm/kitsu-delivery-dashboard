@@ -16,7 +16,9 @@ const state = reactive({
   loggedIn: true,
   isAdmin: false,
   role: null, // 'admin' | 'manager' | 'supervisor' | 'user' | 'client' | 'vendor' — gates the Schedule board's drag permissions
-  error: null,
+  error: null, // initial-load failure — replaces the whole page
+  refreshError: null, // a later refresh failed — keep showing the data we have
+  lastLoadedAt: null, // when `rows` was actually fetched (not when we rendered)
   studioName: null,
   projects: [],
   persons: [],
@@ -74,10 +76,16 @@ function groupRowsIntoShots(rows) {
   return [...map.values()]
 }
 
+// Fetches everything. Safe to call again once loaded (the Refresh button,
+// returning to the tab): the old data stays on screen until the new data
+// replaces it in one assignment, and a failed refresh keeps the old data
+// rather than blanking the page.
 async function load() {
   if (state.loading) return
+  const isRefresh = state.loaded
   state.loading = true
-  state.error = null
+  if (isRefresh) state.refreshError = null
+  else state.error = null
   try {
     if (new URLSearchParams(window.location.search).get('demo') === '1') {
       const demo = demoDataset()
@@ -87,7 +95,8 @@ async function load() {
         loggedIn: true,
         isAdmin: true,
         role: 'admin',
-        loaded: true
+        loaded: true,
+        lastLoadedAt: new Date()
       })
       return
     }
@@ -179,6 +188,7 @@ async function load() {
     state.shots = shots
     state.shotCount = shotCount
     state.loaded = true
+    state.lastLoadedAt = new Date()
 
     // A remembered production that no longer exists (deleted/closed since the
     // last visit) shouldn't leave the dashboard silently empty.
@@ -186,7 +196,9 @@ async function load() {
       selectedProjectId.value = 'all'
     }
   } catch (err) {
-    state.error = err?.message || String(err)
+    const message = err?.message || String(err)
+    if (isRefresh) state.refreshError = message
+    else state.error = message
   } finally {
     state.loading = false
   }

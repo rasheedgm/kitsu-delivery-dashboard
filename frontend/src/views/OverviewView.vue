@@ -33,10 +33,13 @@ const { goToQueue } = useDrillThrough()
 const trackedTotal = computed(() => rows.value.length)
 const shotsTotal = computed(() => shotRows.value.length)
 
-// Narrow a Shots Overview click to exactly the tasks that decide shot status,
-// when the studio has configured which task type that is.
+// A Shots Overview click opens the queue in shot scope: one row per shot (its
+// representative task, or "No task yet"), i.e. exactly the shots behind the
+// number — including delivered/retake statuses the studio configured in
+// Settings and shots that have no task at all, which a plain task filter
+// can't show.
 function goToShotsQueue(patch) {
-  goToQueue(shotStatusDeptName.value ? { ...patch, dept: shotStatusDeptName.value } : patch)
+  goToQueue({ ...patch, scope: 'shots' })
 }
 
 function onShotQuotaSegment(segment) {

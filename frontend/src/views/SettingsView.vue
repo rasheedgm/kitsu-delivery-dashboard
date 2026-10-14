@@ -1,27 +1,40 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useDashboardData } from '../composables/useDashboardData.js'
 import { useSettings } from '../composables/useSettings.js'
 
 const { state: dashboard } = useDashboardData()
 const { state: settings, save } = useSettings()
 
-const form = ref({ shotStatusTaskTypeId: '', deliveredStatusIds: [], retakeStatusIds: [] })
+const form = ref({ shotStatusTaskTypeId: '', deliveredStatusIds: [], retakeStatusIds: [], ignoredTaskTypeIds: [] })
 
 // Re-sync the editable form whenever the loaded/saved settings change —
 // harmless while editing since a save() only fires after the form is
 // already what we're about to persist.
 watch(
-  () => [settings.shotStatusTaskTypeId, settings.deliveredStatusIds, settings.retakeStatusIds],
+  () => [settings.shotStatusTaskTypeId, settings.deliveredStatusIds, settings.retakeStatusIds, settings.ignoredTaskTypeIds],
   () => {
     form.value = {
       shotStatusTaskTypeId: settings.shotStatusTaskTypeId || '',
       deliveredStatusIds: [...settings.deliveredStatusIds],
-      retakeStatusIds: [...settings.retakeStatusIds]
+      retakeStatusIds: [...settings.retakeStatusIds],
+      ignoredTaskTypeIds: [...settings.ignoredTaskTypeIds]
     }
   },
   { immediate: true }
 )
+
+// Shot task types only (the dashboard tracks shots), each with how many tasks
+// of that type exist today so it's obvious what ticking it will hide. A type
+// that's already ticked always stays listed, so it can be un-ticked.
+const ignorableTypes = computed(() => {
+  const counts = {}
+  for (const r of dashboard.rows) counts[r.taskTypeId] = (counts[r.taskTypeId] || 0) + 1
+  return dashboard.taskTypes
+    .filter((t) => !t.for_entity || t.for_entity === 'Shot' || form.value.ignoredTaskTypeIds.includes(t.id))
+    .map((t) => ({ ...t, count: counts[t.id] || 0 }))
+    .sort((a, b) => a.name.localeCompare(b.name))
+})
 
 function toggle(list, id) {
   const i = list.indexOf(id)
@@ -39,7 +52,8 @@ async function onSave() {
     await save({
       shotStatusTaskTypeId: form.value.shotStatusTaskTypeId || null,
       deliveredStatusIds: form.value.deliveredStatusIds,
-      retakeStatusIds: form.value.retakeStatusIds
+      retakeStatusIds: form.value.retakeStatusIds,
+      ignoredTaskTypeIds: form.value.ignoredTaskTypeIds
     })
     saved.value = true
   } catch (err) {
@@ -107,6 +121,28 @@ async function onSave() {
               @change="toggle(form.retakeStatusIds, s.id)"
             >
             <span class="swatch" :style="{ background: s.color }"></span>{{ s.name }}
+          </label>
+        </div>
+      </div>
+
+      <div class="settingsBlock">
+        <div class="settingsLabel">Ignore these task types</div>
+        <p class="settingsHint">
+          Tasks of a ticked type are left out of every number and list on the dashboard —
+          Task overview, Production, the Task queue, and which task represents a shot. Use it
+          for dummy or bookkeeping tasks that aren't production tracking. The Schedule board
+          still shows them (they're still scheduled work).
+        </p>
+        <div class="statusPicker">
+          <label v-for="t in ignorableTypes" :key="t.id" class="statusOption">
+            <input
+              type="checkbox"
+              :disabled="!dashboard.isAdmin"
+              :checked="form.ignoredTaskTypeIds.includes(t.id)"
+              @change="toggle(form.ignoredTaskTypeIds, t.id)"
+            >
+            <span class="swatch" :style="{ background: t.color || 'var(--slate)' }"></span>{{ t.name }}
+            <span class="count">· {{ t.count }}</span>
           </label>
         </div>
       </div>

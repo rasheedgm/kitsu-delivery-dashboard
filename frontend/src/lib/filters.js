@@ -15,7 +15,12 @@ export const DEFAULT_FILTER = Object.freeze({
   dept: 'all', // 'all' | task type name (Kitsu calls this a "task type", not a department)
   artist: 'all', // 'all' | assignee name
   due: 'all', // 'all' | 'overdue' | 'today' | 'tomorrow' | 'week' | 'YYYY-MM-DD'
-  severity: 'all' // 'all' | '0-7' | '8-14' | '15+'
+  severity: 'all', // 'all' | '0-7' | '8-14' | '15+'
+  // 'tasks' lists every task; 'shots' lists one row per shot — its
+  // representative task (see lib/metrics.js buildShotRows), including shots
+  // with no task yet. Shots-overview drill-throughs use 'shots' so the list
+  // is exactly the population behind the number that was clicked.
+  scope: 'tasks' // 'tasks' | 'shots'
 })
 
 const FILTER_KEYS = Object.keys(DEFAULT_FILTER)
@@ -88,6 +93,9 @@ export function describeFilter(filter) {
   if (filter.dept !== 'all') chips.push({ key: 'dept', label: filter.dept, clear: { dept: 'all' } })
   if (filter.artist !== 'all') chips.push({ key: 'artist', label: filter.artist, clear: { artist: 'all' } })
   if (filter.due !== DEFAULT_FILTER.due) chips.push({ key: 'due', label: dueLabel(filter.due), clear: { due: DEFAULT_FILTER.due } })
+  if (filter.scope === 'shots') {
+    chips.push({ key: 'scope', label: 'Shot status · one row per shot', clear: { scope: 'tasks' } })
+  }
   if (filter.severity !== 'all') {
     chips.push({ key: 'severity', label: SEVERITY_LABEL[filter.severity] || filter.severity, clear: { severity: 'all' } })
   }

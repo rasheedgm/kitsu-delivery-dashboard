@@ -33,6 +33,7 @@ const dueSelectOptions = computed(() => {
 const chips = computed(() => describeFilter(props.filter))
 const showClearAll = computed(() => !isDefaultFilter(props.filter))
 const colCount = computed(() => (props.showProduction ? 7 : 6))
+const shotScope = computed(() => props.filter.scope === 'shots')
 
 function patch(p) {
   emit('update:filter', p)
@@ -46,8 +47,9 @@ function clearAll() {
 <template>
   <div class="card">
     <div class="head">
-      <div class="title">Task queue</div>
-      <div class="hint">{{ rows.length }} matching tasks · click a row to open the shot in Kitsu</div>
+      <div class="title">{{ shotScope ? 'Shot queue' : 'Task queue' }}</div>
+      <div class="hint" v-if="shotScope">{{ rows.length }} matching shots · each shot's status task · click a row to open the shot in Kitsu</div>
+      <div class="hint" v-else>{{ rows.length }} matching tasks · click a row to open the shot in Kitsu</div>
     </div>
 
     <div class="controls">
@@ -90,7 +92,7 @@ function clearAll() {
           </tr>
         </thead>
         <tbody>
-          <tr v-if="!rows.length"><td :colspan="colCount" class="empty">No tasks match this filter.</td></tr>
+          <tr v-if="!rows.length"><td :colspan="colCount" class="empty">No {{ shotScope ? 'shots' : 'tasks' }} match this filter.</td></tr>
           <tr
             v-for="(r, i) in rows"
             :key="i"

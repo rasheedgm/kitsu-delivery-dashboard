@@ -48,6 +48,12 @@ class SettingsResource(MethodView):
                 [str(v) for v in value] if isinstance(value, list) else []
             )
 
+        if "ignored_task_type_ids" in data:
+            value = data["ignored_task_type_ids"]
+            updates["ignored_task_type_ids"] = (
+                [str(v) for v in value] if isinstance(value, list) else []
+            )
+
         if updates:
             settings.update(updates)
 

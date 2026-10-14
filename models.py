@@ -27,12 +27,20 @@ class Settings(db.Model, BaseMixin, SerializerMixin):
     delivered_status_ids = db.Column(db.JSON, nullable=False, default=list)
     retake_status_ids = db.Column(db.JSON, nullable=False, default=list)
 
+    # Task types the studio doesn't want counted anywhere on the dashboard —
+    # dummy / bookkeeping tasks that aren't production tracking. Plain ids for
+    # the same reason as shot_status_task_type_id.
+    ignored_task_type_ids = db.Column(
+        db.JSON, nullable=False, default=list, server_default=db.text("'[]'")
+    )
+
     def present(self):
         return {
             "id": str(self.id),
             "shot_status_task_type_id": self.shot_status_task_type_id,
             "delivered_status_ids": self.delivered_status_ids or [],
             "retake_status_ids": self.retake_status_ids or [],
+            "ignored_task_type_ids": self.ignored_task_type_ids or [],
             "updated_at": fields.serialize_datetime(self.updated_at),
         }
 
@@ -45,5 +53,6 @@ def get_or_create():
             shot_status_task_type_id=None,
             delivered_status_ids=[],
             retake_status_ids=[],
+            ignored_task_type_ids=[],
         )
     return row

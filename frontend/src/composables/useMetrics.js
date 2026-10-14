@@ -9,7 +9,10 @@ export function useMetrics() {
   const { state: dashboard, filteredRows, filteredShots, filteredProjects, filteredShotCount } = useDashboardData()
   const { state: settings } = useSettings()
   const today = new Date()
-  const rows = filteredRows
+  // Task types the studio marked "not production tracking" never reach any
+  // metric or list below (Settings → ignored task types).
+  const rows = computed(() => m.excludeTaskTypes(filteredRows.value, settings.ignoredTaskTypeIds))
+  const shots = computed(() => m.excludeTaskTypesFromShots(filteredShots.value, settings.ignoredTaskTypeIds))
 
   const kpis = computed(() => m.kpis(rows.value, today, filteredShotCount.value))
   const deadline = computed(() => m.deadline(filteredProjects.value, today))
@@ -41,7 +44,7 @@ export function useMetrics() {
   // buildShotRows + composables/useSettings.js for the studio-configurable
   // rule). Reuses the exact same row-shaped metric functions as the
   // task-level numbers above.
-  const shotRows = computed(() => m.buildShotRows(filteredShots.value, settings))
+  const shotRows = computed(() => m.buildShotRows(shots.value, settings))
   const shotKpis = computed(() => m.kpis(shotRows.value, today, shotRows.value.length))
   const shotStatusSegments = computed(() =>
     m.statusBreakdown(shotRows.value).map((s) => ({
@@ -65,7 +68,8 @@ export function useMetrics() {
   // Not a computed itself (it takes an argument) — callers wrap it in their
   // own computed keyed on the filter they're using (see TaskQueueView.vue).
   function queueRows(filter) {
-    return m.queueRows(rows.value, filter, today)
+    const source = filter && filter.scope === 'shots' ? shotRows.value : rows.value
+    return m.queueRows(source, filter, today)
   }
 
   return {

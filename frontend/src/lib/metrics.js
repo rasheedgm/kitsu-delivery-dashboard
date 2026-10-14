@@ -13,6 +13,26 @@ import {
   startOfDay
 } from './format.js'
 
+// Studio-configured "not production tracking" task types (Settings →
+// ignored task types). Applied once, up front, so every number and every
+// drill-through list is built from the same population.
+export function excludeTaskTypes(rows, ignoredIds) {
+  if (!ignoredIds || !ignoredIds.length) return rows
+  const ignored = new Set(ignoredIds)
+  return rows.filter((r) => !ignored.has(r.taskTypeId))
+}
+
+// Same, for the per-shot lists (each shot carries its own `.tasks`): an
+// ignored task must not be picked as a shot's representative task either.
+export function excludeTaskTypesFromShots(shots, ignoredIds) {
+  if (!ignoredIds || !ignoredIds.length) return shots
+  const ignored = new Set(ignoredIds)
+  return (shots || []).map((shot) => ({
+    ...shot,
+    tasks: (shot.tasks || []).filter((t) => !ignored.has(t.taskTypeId))
+  }))
+}
+
 export function isOverdue(row, today) {
   return !!row.dueDate && row.klass !== CLASS.DONE && row.dueDate < startOfDay(today)
 }
@@ -182,6 +202,8 @@ export function statusMatrix(rows) {
 // omitted fields default to "no filter" (due: 'all'), matching DEFAULT_FILTER.
 export function queueRows(rows, filter = {}, today = new Date()) {
   const f = { status: 'all', dept: 'all', artist: 'all', due: 'all', severity: 'all', q: '', ...filter }
+  // `rows` may be task rows or shot rows (buildShotRows) — the latter has no
+  // task type for a shot that has no task yet.
   const t0 = startOfDay(today)
   const tomorrow = addDays(t0, 1)
   const week = isoWeekRange(today)
@@ -215,7 +237,7 @@ export function queueRows(rows, filter = {}, today = new Date()) {
 
   function matches(r) {
     if (f.status !== 'all' && r.klass !== f.status) return false
-    if (f.dept !== 'all' && r.taskTypeName !== f.dept) return false
+    if (f.dept !== 'all' && (r.taskTypeName || '—') !== f.dept) return false
     if (f.artist !== 'all') {
       const names = r.assigneeNames.length ? r.assigneeNames : ['Unassigned']
       if (!names.includes(f.artist)) return false
@@ -223,7 +245,7 @@ export function queueRows(rows, filter = {}, today = new Date()) {
     if (!matchesDue(r)) return false
     if (!matchesSeverity(r)) return false
     if (q) {
-      const haystack = `${r.shotName} ${r.taskTypeName} ${r.assigneeNames.join(' ')} ${r.statusName} ${r.projectName}`.toLowerCase()
+      const haystack = `${r.shotName} ${r.taskTypeName || ''} ${r.assigneeNames.join(' ')} ${r.statusName} ${r.projectName}`.toLowerCase()
       if (!haystack.includes(q)) return false
     }
     return true
@@ -234,7 +256,7 @@ export function queueRows(rows, filter = {}, today = new Date()) {
     projectName: r.projectName,
     shotId: r.shotId,
     shot: r.shotName,
-    dept: r.taskTypeName,
+    dept: r.taskTypeName || '—',
     artist: r.assigneeNames[0] || 'Unassigned',
     klass: r.klass,
     status: r.statusName,

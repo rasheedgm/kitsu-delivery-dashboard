@@ -7,7 +7,8 @@ import { getPluginSettings, savePluginSettings } from '../api/kitsu.js'
 const DEFAULTS = {
   shotStatusTaskTypeId: null,
   deliveredStatusIds: [],
-  retakeStatusIds: []
+  retakeStatusIds: [],
+  ignoredTaskTypeIds: []
 }
 
 const state = reactive({
@@ -22,7 +23,8 @@ function fromApi(data) {
   return {
     shotStatusTaskTypeId: data?.shot_status_task_type_id || null,
     deliveredStatusIds: Array.isArray(data?.delivered_status_ids) ? data.delivered_status_ids : [],
-    retakeStatusIds: Array.isArray(data?.retake_status_ids) ? data.retake_status_ids : []
+    retakeStatusIds: Array.isArray(data?.retake_status_ids) ? data.retake_status_ids : [],
+    ignoredTaskTypeIds: Array.isArray(data?.ignored_task_type_ids) ? data.ignored_task_type_ids : []
   }
 }
 
@@ -31,6 +33,7 @@ function toApi(patch) {
   if ('shotStatusTaskTypeId' in patch) out.shot_status_task_type_id = patch.shotStatusTaskTypeId || null
   if ('deliveredStatusIds' in patch) out.delivered_status_ids = patch.deliveredStatusIds || []
   if ('retakeStatusIds' in patch) out.retake_status_ids = patch.retakeStatusIds || []
+  if ('ignoredTaskTypeIds' in patch) out.ignored_task_type_ids = patch.ignoredTaskTypeIds || []
   return out
 }
 
@@ -45,7 +48,8 @@ async function load() {
       Object.assign(state, {
         shotStatusTaskTypeId: 'tt_comp',
         deliveredStatusIds: ['st_done'],
-        retakeStatusIds: ['st_retake', 'st_crtk']
+        retakeStatusIds: ['st_retake', 'st_crtk'],
+        ignoredTaskTypeIds: []
       })
       state.loaded = true
       return

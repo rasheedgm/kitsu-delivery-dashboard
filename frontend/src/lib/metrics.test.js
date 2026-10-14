@@ -10,6 +10,8 @@ import {
   overdueQueue,
   queueRows,
   buildShotRows,
+  excludeTaskTypes,
+  excludeTaskTypesFromShots,
   deadline
 } from './metrics.js'
 
@@ -275,5 +277,61 @@ describe('deadline', () => {
     const dl = deadline(projects, TODAY)
     expect(dl.projectName).toBe('Next')
     expect(dl.daysLeft).toBe(16)
+  })
+})
+
+describe('shot-scope queue (Shots overview drill-through)', () => {
+  const settings = { shotStatusTaskTypeId: null, deliveredStatusIds: ['st_final'], retakeStatusIds: [] }
+  // st_final is NOT flagged done in Kitsu (klass WIP) — only Settings makes it "delivered".
+  const shots = [
+    { shotId: 'a', projectId: 'p1', projectName: 'Show A', shotName: 'A_0010', tasks: [row({ shotId: 'a', shotName: 'A_0010', statusId: 'st_final', statusName: 'Final', klass: CLASS.WIP, dueDate: d(2026, 9, 1) })] },
+    { shotId: 'b', projectId: 'p1', projectName: 'Show A', shotName: 'A_0020', tasks: [] },
+    { shotId: 'c', projectId: 'p1', projectName: 'Show A', shotName: 'A_0030', tasks: [row({ shotId: 'c', shotName: 'A_0030', klass: CLASS.WIP, dueDate: d(2026, 9, 20) })] }
+  ]
+  const shotRows = buildShotRows(shots, settings)
+
+  it('lists a shot delivered via Settings even though its task flag is not done', () => {
+    const q = queueRows(shotRows, { status: CLASS.DONE }, TODAY)
+    expect(q.map((r) => r.shot)).toEqual(['A_0010'])
+    expect(kpis(shotRows, TODAY, shotRows.length).delivered).toBe(1)
+  })
+
+  it('lists a shot with no task yet under Not started, with a placeholder', () => {
+    const q = queueRows(shotRows, { status: CLASS.NOT_STARTED }, TODAY)
+    expect(q).toHaveLength(1)
+    expect(q[0]).toMatchObject({ shot: 'A_0020', dept: '—', status: 'No task yet', due: '—' })
+    expect(kpis(shotRows, TODAY, shotRows.length).notStarted).toBe(1)
+  })
+
+  it('every KPI count equals the length of the list its click opens', () => {
+    const k = kpis(shotRows, TODAY, shotRows.length)
+    expect(queueRows(shotRows, { status: CLASS.DONE }, TODAY)).toHaveLength(k.delivered)
+    expect(queueRows(shotRows, { status: CLASS.NOT_STARTED }, TODAY)).toHaveLength(k.notStarted)
+    expect(queueRows(shotRows, { due: 'overdue' }, TODAY)).toHaveLength(k.overdue)
+  })
+})
+
+describe('excludeTaskTypes / excludeTaskTypesFromShots', () => {
+  const rows = [
+    row({ taskTypeId: 'tt_comp', taskTypeName: 'Compositing' }),
+    row({ taskTypeId: 'tt_dummy', taskTypeName: 'Dummy' }),
+    row({ taskTypeId: 'tt_dummy', taskTypeName: 'Dummy' })
+  ]
+
+  it('drops tasks of ignored types only', () => {
+    expect(excludeTaskTypes(rows, ['tt_dummy']).map((r) => r.taskTypeName)).toEqual(['Compositing'])
+  })
+
+  it('is a no-op (same array) when nothing is ignored', () => {
+    expect(excludeTaskTypes(rows, [])).toBe(rows)
+  })
+
+  it('keeps shots but removes their ignored tasks, so they cannot represent the shot', () => {
+    const shots = [{ shotId: 'a', shotName: 'A_0010', tasks: [rows[0], { ...rows[1], dueDate: d(2026, 12, 1) }] }]
+    const out = excludeTaskTypesFromShots(shots, ['tt_dummy'])
+    expect(out).toHaveLength(1)
+    expect(out[0].tasks.map((t) => t.taskTypeName)).toEqual(['Compositing'])
+    // the dummy task had the latest due date — it must not become the shot's task
+    expect(buildShotRows(out, { shotStatusTaskTypeId: null, deliveredStatusIds: [], retakeStatusIds: [] })[0].taskTypeName).toBe('Compositing')
   })
 })

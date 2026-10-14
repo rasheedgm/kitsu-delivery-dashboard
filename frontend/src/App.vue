@@ -9,7 +9,7 @@ const route = useRoute()
 const router = useRouter()
 const { state, load, selectedProjectId, filteredProjects } = useDashboardData()
 const { load: loadSettings } = useSettings()
-const { pendingCount } = useSchedule()
+const { pendingCount, rebasePending } = useSchedule()
 
 const tabs = [
   { to: '/', label: 'Overview' },
@@ -41,9 +41,32 @@ function goTab(to) {
   router.push({ path: to, query: route.query })
 }
 
+// When the data was actually fetched — not when this component rendered.
 const lastUpdated = computed(() =>
-  new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+  state.lastLoadedAt
+    ? state.lastLoadedAt.toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+    : '—'
 )
+
+// The dashboard only ever fetched once, so changes made in Kitsu afterwards
+// never showed up. Refresh re-fetches everything (and the studio settings),
+// then re-applies any unsaved schedule moves on top of the fresh rows.
+const refreshing = computed(() => state.loading && state.loaded)
+
+async function refresh() {
+  if (state.loading) return
+  await Promise.all([load(), loadSettings()])
+  rebasePending()
+}
+
+// Coming back to the tab after a while is the moment people expect fresh
+// numbers; don't hammer the API on every focus flicker though.
+const STALE_MS = 60 * 1000
+function refreshIfStale() {
+  if (document.visibilityState !== 'visible') return
+  if (!state.loaded || state.loading || !state.lastLoadedAt) return
+  if (Date.now() - state.lastLoadedAt.getTime() > STALE_MS) refresh()
+}
 
 const heading = computed(() =>
   state.studioName ? `${state.studioName} Dashboard` : 'Dashboard'
@@ -83,10 +106,16 @@ function onMessage(event) {
 onMounted(() => {
   applyTheme(currentThemeParam())
   window.addEventListener('message', onMessage)
+  document.addEventListener('visibilitychange', refreshIfStale)
+  window.addEventListener('focus', refreshIfStale)
   load()
   loadSettings()
 })
-onBeforeUnmount(() => window.removeEventListener('message', onMessage))
+onBeforeUnmount(() => {
+  window.removeEventListener('message', onMessage)
+  document.removeEventListener('visibilitychange', refreshIfStale)
+  window.removeEventListener('focus', refreshIfStale)
+})
 </script>
 
 <template>
@@ -107,6 +136,14 @@ onBeforeUnmount(() => window.removeEventListener('message', onMessage))
         </div>
         <button
           type="button"
+          class="settingsBtn refreshBtn"
+          :class="{ spinning: refreshing }"
+          :disabled="!state.loaded || refreshing"
+          title="Reload data from Kitsu"
+          @click="refresh"
+        >↻</button>
+        <button
+          type="button"
           class="settingsBtn"
           :class="{ active: route.path === '/settings' }"
           title="Settings"
@@ -114,6 +151,10 @@ onBeforeUnmount(() => window.removeEventListener('message', onMessage))
         >⚙</button>
       </div>
     </header>
+
+    <div v-if="state.refreshError" class="refreshError">
+      Couldn't refresh from Kitsu ({{ state.refreshError }}) — showing the data loaded at {{ lastUpdated }}.
+    </div>
 
     <div v-if="state.loading && !state.loaded" class="state">Loading Kitsu data…</div>
     <div v-else-if="!state.loggedIn" class="state">
@@ -136,7 +177,7 @@ onBeforeUnmount(() => window.removeEventListener('message', onMessage))
         >{{ t.label }}<span v-if="t.to === '/schedule' && pendingCount" class="tabBadge">{{ pendingCount }}</span></button>
       </nav>
       <router-view />
-      <div class="footer">Studio Dashboard · Kitsu plugin · v0.5.3</div>
+      <div class="footer">Studio Dashboard · Kitsu plugin · v0.6.0</div>
     </template>
   </div>
 </template>
