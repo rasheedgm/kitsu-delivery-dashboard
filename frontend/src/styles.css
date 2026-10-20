@@ -15,7 +15,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,ui-sans-se
 button,input,select{font:inherit;color:inherit}
 a{color:var(--blue)}
 
-.shell{max-width:1480px;margin:auto;padding:18px 20px 46px}
+.shell{max-width:none;margin:0;padding:18px 20px 46px}
 .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:14px;flex-wrap:wrap}
 .brand{display:flex;align-items:center;gap:12px}
 .logo{width:40px;height:40px;border-radius:12px;background:var(--navy);color:#fff;display:grid;place-items:center;font-weight:900}
