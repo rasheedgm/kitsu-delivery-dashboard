@@ -1,6 +1,6 @@
 id = "delivery_dashboard"
 name = "Studio Dashboard"
-version = "0.6.1"
+version = "0.7.0"
 description = "Live studio dashboard: shots overview, task overview, weekly quota, task type pipeline, a drag-and-drop weekly schedule board, click-through drill-downs, saved views, a filterable task queue, and studio-configurable shot-status settings."
 maintainer = "gm.abdul <gm.abdul@gmail.com>"
 website = "https://github.com/rasheedgm/kitsu-delivery-dashboard"

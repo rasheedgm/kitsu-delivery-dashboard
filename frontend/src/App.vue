@@ -177,7 +177,7 @@ onBeforeUnmount(() => {
         >{{ t.label }}<span v-if="t.to === '/schedule' && pendingCount" class="tabBadge">{{ pendingCount }}</span></button>
       </nav>
       <router-view />
-      <div class="footer">Studio Dashboard · Kitsu plugin · v0.6.1</div>
+      <div class="footer">Studio Dashboard · Kitsu plugin · v0.7.0</div>
     </template>
   </div>
 </template>
